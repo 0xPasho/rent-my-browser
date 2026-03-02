@@ -39,13 +39,29 @@ Real machine nodes avoid bot detection by:
 6. Matching browser fingerprint to the node's actual environment (timezone, language,
    screen resolution)
 
-## Node Registration
+## Node Onboarding
 
-When a node connects to the marketplace, it advertises:
+Operators register with a wallet address, pay $1 USDC to verify, get an API key:
 
 ```
+POST /nodes
+{ "wallet_address": "0x...", "node_type": "real" }
+→ 402 → pay $1 USDC
+→ { "api_key": "rmb_n_...", "node_id": "uuid" }
+```
+
+Set `RMB_API_KEY` in OpenClaw skill env vars. The node starts participating
+when the agent goes idle. No website, no dashboard required. Earnings are
+paid out to the same wallet used to register. See [Auth](./auth.md) for
+details on wallet-based identity and dashboard access.
+
+## Node Registration Payload
+
+When a node starts polling, its first call registers capabilities:
+
+```
+POST /nodes/:id/heartbeat
 {
-  "node_id": "uuid",
   "type": "headless" | "real",
   "browser": {
     "name": "chrome" | "chromium",
@@ -64,13 +80,86 @@ When a node connects to the marketplace, it advertises:
 }
 ```
 
-## Routing Logic
+## Dispatch: Uber-Style Claim Model
 
-When a task is submitted, the router considers:
+Tasks are **not assigned** to a specific node. They are **offered** to multiple
+eligible nodes, and the first to claim wins.
 
-1. **Requested tier** — consumer explicitly asks for headless or real
-2. **Task mode** — adversarial/async require real machine nodes
-3. **Target site** — known bot-detection sites auto-upgrade to real
-4. **Geo requirements** — consumer may need a specific country/region
-5. **Availability** — which nodes are idle right now
-6. **Load balancing** — distribute across nodes, don't overload one operator
+### Flow
+
+```
+Task is paid and queued
+    │
+    ▼
+Router filters eligible nodes (tier, geo, mode, score)
+    │
+    ▼
+Create offers for top N nodes (e.g., 5)
+    │
+    ├── Node A polls, sees offer, claims → WINS → gets full task payload
+    ├── Node B polls, sees offer, claims → 409 (already claimed)
+    ├── Node C never polls (slow/offline)
+    └── Node D polls, sees offer, ignores it
+    │
+    ▼
+Offer expires after timeout (10-15 seconds)
+    │
+    └── If unclaimed → broadcast to next batch of N nodes
+        └── Still unclaimed → task fails, refund consumer
+```
+
+### Node polling loop
+
+The OpenClaw skill runs a simple HTTP polling loop — no persistent WebSocket,
+no background daemon:
+
+```
+1. POST /nodes/:id/heartbeat     → register/update capabilities
+2. GET  /nodes/:id/offers        → check for pending offers
+3. POST /offers/:id/claim        → claim an offer (first wins)
+4. GET  /tasks/:id               → get full task payload
+5. Execute task using browser
+6. POST /tasks/:id/steps         → report each step (action + screenshot)
+7. POST /tasks/:id/result        → submit final result
+8. Back to step 2
+```
+
+The offer payload is minimal — just enough for the node to decide:
+
+```
+{
+  "offer_id": "uuid",
+  "task_id": "uuid",
+  "goal_summary": "signup on example.com",
+  "mode": "simple",
+  "estimated_steps": 5,
+  "payout_per_step": 320
+}
+```
+
+The full task payload (goal + context with consumer data) is only sent after
+claiming. Other nodes never see the consumer's data.
+
+## Node Score
+
+The platform tracks a score per node to ensure quality and honesty:
+
+### Metrics
+
+- **Claim rate** — how often does the node claim offers it receives
+- **Success rate** — how often do claimed tasks complete successfully
+- **Response time** — how fast does it poll and claim
+- **Step honesty** — are reported step counts consistent with similar tasks
+  (outlier detection, no AI needed, just stats)
+
+### Effects
+
+- **High-score nodes** get offers first and more frequently
+- **Low-score nodes** get fewer offers, deprioritized in routing
+- **Very low-score nodes** may be temporarily suspended from receiving offers
+
+### Outlier detection
+
+If the average step count for "signup on example.com" is 4 steps and a node
+consistently reports 12, it gets flagged. No AI needed — just statistical
+comparison against the task history.

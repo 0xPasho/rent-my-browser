@@ -1,110 +1,212 @@
 # Payment System
 
+## Accounts
+
+Everything is API-first. No website needed. Wallet address = identity.
+See [Auth](./auth.md) for full details on account creation, wallet-based
+verification, and challenge-response authentication.
+
+### Consumer account
+
+```
+POST /accounts
+{ "wallet_address": "0x..." }
+→ 402 → pay $1 USDC → { "api_key": "rmb_c_..." }
+```
+
+The wallet address is the identity. The API key is used for all subsequent
+requests. The credit balance is tied to the account.
+
+### Node operator account
+
+```
+POST /nodes
+{ "wallet_address": "0x...", "node_type": "real" }
+→ 402 → pay $1 USDC → { "api_key": "rmb_n_..." }
+```
+
+Same model. API key goes into OpenClaw skill env vars. Node starts earning.
+Payouts go back to the same wallet used to register.
+
+## Credits
+
+1 credit = 1 cent (USD). Simple, no made-up token economy.
+
+```
+$1 topup  = 100 credits
+$10 topup = 1000 credits
+```
+
+Consumers prepay credits. Balance is stored in Postgres, tied to the API key.
+
+### Top up — Two rails
+
+#### Stripe (for humans, teams, businesses)
+
+```
+POST /accounts/credits
+{ "amount": 1000, "method": "stripe" }
+→ { "checkout_url": "https://checkout.stripe.com/..." }
+
+(consumer completes Stripe Checkout)
+
+Webhook confirms payment → credits added
+```
+
+#### USDC on Base (for autonomous agents, crypto users)
+
+```
+POST /accounts/credits
+{ "amount": 1000, "method": "crypto" }
+→ 402 {
+    chain: "base",
+    token: "USDC",
+    address: "0x...",
+    amount: "10.00",
+    memo: "topup_abc123",
+    expires_at: "2026-..."
+  }
+
+Agent sends USDC to address with memo → platform detects payment → credits added
+```
+
+This is the x402 flow. Fully programmatic, no human needed. An autonomous AI
+agent can top up and submit tasks without any human in the loop.
+
+Both rails add credits to the same balance. The rest of the system doesn't
+care how the credits got there.
+
+### Check balance
+
+```
+GET /accounts/me
+→ { "balance": 800, "total_spent": 200, "tasks_completed": 3 }
+```
+
 ## Pricing Model
 
-Pricing is **per-step, deterministic**. No AI in the billing path.
+Pricing is **per-step, based on actual execution**. The AI estimates a quote
+upfront, but the consumer pays for what actually happens.
+
+### How it works
+
+1. Consumer submits task with a **max budget** in credits (hard ceiling).
+2. AI estimates complexity tier and step count → produces a **quote**.
+3. Max budget is **held** (reserved from consumer's balance).
+4. Node executes and reports each step.
+5. On completion: `actual_cost = base_price_per_step × actual_steps_executed`.
+6. Consumer is charged actual_cost. Unused budget is released.
+
+### Base prices per step
+
+| Tier | Mode | Per step | 10-step task |
+|---|---|---|---|
+| Headless | Simple | 5 credits ($0.05) | 50 credits ($0.50) |
+| Real | Simple | 10 credits ($0.10) | 100 credits ($1.00) |
+| Real | Adversarial | 15 credits ($0.15) | 150 credits ($1.50) |
+| Real | Async | 20 credits ($0.20) | 200 credits ($2.00) |
+
+Starting prices. Tuned based on market demand.
+
+### Example
 
 ```
-task_price = base_price × step_count
+Consumer submits: max_budget = 300 credits
+AI estimates:     5 steps, ~100 credits (real + simple)
+Node executes:    4 steps (finished faster than expected)
+Actual charge:    4 × 10 = 40 credits
+Consumer keeps:   260 credits back in their balance
 ```
 
-- `base_price` varies by tier and mode:
-  - Headless + Simple: lowest rate
-  - Real + Simple: mid rate
-  - Real + Adversarial: higher rate (more node resources, behavior simulation)
-  - Real + Async: highest rate (session held open, waiting periods)
-- `step_count` is determined by the AI decomposition layer
+## The Split
 
-The price is calculated **before execution** and presented to the consumer. No
-surprises.
+Every completed task splits the charge:
 
-## x402 Payment Protocol
+```
+Platform takes: 20% of actual cost
+Operator gets:  80% of actual cost
+```
 
-The primary payment rail uses HTTP 402 (Payment Required) with Lightning Network
-invoices.
+Example: task costs 100 credits → platform gets 20, operator gets 80.
 
-### Flow
+Operator's 80 credits = $0.80 in their ledger balance.
+
+## Task Payment Flow
+
+### With credits (fast path)
 
 ```
 Consumer                           Platform
    │                                  │
    │── POST /tasks ──────────────────>│
-   │   { goal, context }              │
-   │                                  │── AI decomposes → 5 steps
-   │                                  │── price = base × 5
+   │   Authorization: Bearer <key>    │
+   │   { goal, context, max_budget }  │
+   │                                  │── validate, estimate
+   │                                  │── hold max_budget from balance
+   │                                  │── broadcast offer to nodes
+   │<── 202 { task_id, estimate } ────│
    │                                  │
-   │<── 402 Payment Required ─────────│
-   │   {                              │
-   │     task_id: "uuid",             │
-   │     steps: 5,                    │
-   │     price_sats: 500,             │
-   │     invoice: "lnbc...",          │
-   │     expires_at: "2026-..."       │
+   │   ... node claims and executes ..│
+   │                                  │
+   │── GET /tasks/:id ───────────────>│
+   │<── 200 { result, actual_cost } ──│
+   │                                  │── charge actual_cost
+   │                                  │── release remaining hold
+```
+
+### With x402 (no account, USDC on Base)
+
+```
+Consumer                           Platform
+   │                                  │
+   │── POST /tasks ──────────────────>│
+   │   { goal, context, max_budget }  │
+   │                                  │── validate, estimate
+   │<── 402 {                    ─────│
+   │     task_id,                     │
+   │     estimate,                    │
+   │     chain: "base",              │
+   │     token: "USDC",             │
+   │     address: "0x...",           │
+   │     amount: "3.00",            │
+   │     expires_at                   │
    │   }                              │
    │                                  │
-   │── (pay lightning invoice) ──────>│
+   │── (send USDC on Base) ─────────>│
    │                                  │
    │── POST /tasks/:id/confirm ──────>│
-   │   { payment_proof: "..." }       │
-   │                                  │── dispatch to node
-   │                                  │── node executes
+   │   { tx_hash: "0x..." }          │
+   │                                  │── verify onchain
+   │                                  │── broadcast offer to nodes
+   │<── 202 { task_id } ─────────────│
    │                                  │
-   │<── 200 OK ───────────────────────│
-   │   { result }                     │
-```
-
-### Why x402
-
-- **Machine-native**: AI agents and automated systems can pay without human
-  intervention. Submit task → receive invoice → pay programmatically → get result.
-- **No accounts needed**: One-shot payments without signup.
-- **Instant settlement**: Lightning payments settle in seconds.
-- **Micropayment friendly**: Per-task payments can be fractions of a cent.
-
-## Credits (Parallel Rail)
-
-For consumers who prefer traditional payment or need higher throughput, credits
-provide a prepaid balance system.
-
-### Flow
-
-```
-Consumer (API key + credit balance)
-   │
-   │── POST /tasks ──────────────────>│
-   │   { goal, context }              │
-   │   Authorization: Bearer <key>    │
-   │                                  │── decompose, calculate price
-   │                                  │── deduct from credit balance
-   │                                  │── dispatch to node
+   │   ... node claims and executes ..│
    │                                  │
-   │<── 200 OK ───────────────────────│
-   │   { result, credits_remaining }  │
+   │── GET /tasks/:id ───────────────>│
+   │<── 200 { result, actual_cost } ──│
+   │                                  │── refund difference onchain
 ```
-
-- No 402 round-trip — faster for high-volume consumers
-- Credits purchased in bulk via Stripe, crypto, or other rails
-- API key authentication
-- Balance visible via `GET /account/balance`
 
 ## Double-Entry Ledger
 
-Every completed task creates balanced ledger entries. The system uses double-entry
-bookkeeping to ensure money is always accounted for.
+Postgres-based. Every transaction creates balanced entries. The ledger is the
+source of truth for all financial state.
 
 ### On task completion
 
 ```
-DEBIT   consumer_account     500 sats    (task cost)
-CREDIT  platform_revenue     100 sats    (20% platform fee)
-CREDIT  operator_balance     400 sats    (80% to node operator)
+DEBIT   consumer_hold        300 credits  (release hold)
+CREDIT  consumer_balance     260 credits  (unused budget returned)
+DEBIT   consumer_balance      40 credits  (actual task cost)
+CREDIT  platform_revenue       8 credits  (20% platform fee)
+CREDIT  operator_balance      32 credits  (80% to node operator)
 ```
 
-### On operator payout
+### On operator withdrawal
 
 ```
-DEBIT   operator_balance     10,000 sats (accumulated balance)
-CREDIT  operator_payout      10,000 sats (sent to operator wallet)
+DEBIT   operator_balance    5000 credits  (accumulated balance)
+CREDIT  operator_payout     5000 credits  (sent to operator)
 ```
 
 ### Principles
@@ -114,25 +216,55 @@ CREDIT  operator_payout      10,000 sats (sent to operator wallet)
 - Refunds are new entries, not reversals of existing ones.
 - The ledger is the source of truth for all financial state.
 
-## Operator Payouts
+## Operator Earnings & Payouts
 
-- Balances accumulate as the node completes tasks.
-- Payouts are **batched**: weekly or when balance hits a threshold (e.g., 50,000
-  sats).
-- No real-time per-task payouts — too expensive and complex.
-- Payout method: Lightning (primary), on-chain Bitcoin (fallback for large
-  amounts).
+Operators earn 80% of every task their node completes. Balances accumulate
+in the Postgres ledger.
 
-## Open Questions
+### Check earnings
 
-- **Refund policy**: What happens on task failure? Options:
-  - Full refund on any failure
-  - Partial refund (charge for completed steps only)
-  - No refund if the node made a good-faith attempt
-- **Dispute resolution**: If consumer claims the result is wrong, who arbitrates?
-  Task recordings/screenshots could serve as evidence.
-- **Dynamic pricing**: Should base_price adjust based on supply/demand? More
-  available nodes → cheaper. High demand → premium. This adds complexity but
-  maximizes operator earnings.
-- **Async hold fee**: Async tasks tie up a node during wait periods. Flat
-  reservation fee per wait period? Per-minute hold rate?
+```
+GET /accounts/me
+→ { "balance": 4500, "total_earned": 12000, "tasks_completed": 87 }
+```
+
+Balance is in credits. 4500 credits = $45.00.
+
+### Withdraw
+
+Two payout methods, mirroring the topup rails:
+
+#### Stripe Connect (for humans)
+
+Operators onboard once via Stripe Connect (handles KYC/identity). When they
+request withdrawal, the platform transfers via Stripe to their bank account.
+
+```
+POST /accounts/withdrawals
+{ "method": "stripe", "amount": 4500 }
+→ { "amount": 4500, "usd": "$45.00", "status": "processing", "eta": "1-2 days" }
+```
+
+#### USDC on Base (for agents, crypto users)
+
+Platform sends USDC to the wallet address used to register. No need to
+provide an address — it's already on file.
+
+```
+POST /accounts/withdrawals
+{ "method": "crypto", "amount": 4500 }
+→ { "amount": 4500, "usd": "$45.00", "address": "0x...", "tx_hash": "0x...", "status": "sent" }
+```
+
+### Payout policy
+
+- Minimum withdrawal: 500 credits ($5.00)
+- No real-time per-task payouts — too expensive and complex
+- Manual review for v1. Automatic via Stripe Connect / onchain for v2.
+
+### No custody, no wallet management
+
+- The platform holds a **ledger balance** (a number in Postgres), not money.
+- Consumer pays in → platform receives (Stripe or USDC to platform address).
+- Operator cashes out → platform sends (Stripe Connect or USDC to their address).
+- One platform wallet / one Stripe account. Everyone else has a number.

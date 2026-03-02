@@ -2,19 +2,22 @@
 
 ## How Tasks Work
 
-A consumer submits a **goal** in natural language (or structured format) along
-with context. The platform's AI layer decomposes this into semantic steps, prices
-it, and dispatches the text goal to a node. The node's OpenClaw agent interprets
-the DOM at runtime and executes autonomously.
+A consumer submits a **goal** in natural language along with context and a
+**max budget**. The platform validates, estimates complexity, and broadcasts
+the task as an offer to eligible nodes. The first node to claim it receives
+the **text goal + context** and executes autonomously, reporting each step
+back to the platform. The consumer is charged for actual steps executed,
+never more than their max budget.
 
-**The node receives a text goal, not pre-decomposed steps with selectors.** Pre-
-decomposition to exact selectors is impossible without seeing the page first. The
-AI decomposition is for pricing and validation, not for execution instructions.
+**The node receives a text goal, not pre-decomposed steps with selectors.**
+Pre-decomposition to exact selectors is impossible without seeing the page
+first. The AI estimation is for pricing and validation only.
 
 ## Task Submission
 
 ```
 POST /tasks
+Authorization: Bearer <api_key>
 {
   "goal": "Go to example.com/signup, fill the form with the provided data, submit it",
   "context": {
@@ -25,29 +28,50 @@ POST /tasks
     "tier": "real",          // optional: "headless" | "real" | "auto"
     "mode": "simple",        // "simple" | "adversarial" | "async"
     "geo": "US"              // optional geo requirement
-  }
+  },
+  "max_budget": 3000         // max sats the consumer is willing to pay
 }
 ```
 
-## AI Decomposition
+Response:
 
-The AI validation layer processes the task before dispatch:
+```
+202 Accepted
+{
+  "task_id": "uuid",
+  "estimate": {
+    "tier": "real",
+    "complexity": "medium",
+    "estimated_steps": 5,
+    "estimated_cost": 2000
+  },
+  "max_budget": 3000,
+  "status": "queued"
+}
+```
+
+The estimate is a **quote**. The actual cost depends on how many steps the
+node executes. The consumer's max_budget is the hard ceiling.
+
+## AI Validation & Estimation
+
+The AI layer processes the task before dispatch:
 
 1. **Safety check** — reject malicious tasks (credential stuffing, abuse, etc.)
-2. **Step decomposition** — break the goal into semantic steps for pricing:
+2. **Step estimation** — estimate semantic steps for pricing:
    - "Navigate to example.com/signup"
-   - "Fill name field with 'John Doe'"
-   - "Fill email field with 'john@example.com'"
+   - "Fill name field"
+   - "Fill email field"
    - "Click submit"
-   - "Screenshot the confirmation"
-3. **Step count** — used for deterministic pricing (see [Payment](./payment.md))
-4. **Tier recommendation** — if tier is "auto", recommend headless or real based
-   on the target site
+   - "Screenshot confirmation"
+3. **Complexity tier** — simple / medium / complex. Determines base price.
+4. **Tier recommendation** — if tier is "auto", recommend headless or real
+   based on the target site.
 5. **Mode validation** — ensure the requested mode is compatible with available
-   nodes
+   nodes.
 
-The decomposed steps are **not sent to the node**. They exist for pricing and
-validation only. The node receives the original text goal + context.
+The estimation is **not sent to the node**. It exists for pricing and validation
+only. The node receives the original text goal + context.
 
 ## Three Task Modes
 
@@ -93,15 +117,76 @@ Async tasks require:
 
 Only available on real machine nodes.
 
+## Node Step Reporting
+
+As the node executes, it reports each step back to the platform:
+
+```
+POST /tasks/:id/steps
+{
+  "step": 1,
+  "action": "navigated to example.com/signup",
+  "screenshot": "base64..."
+}
+```
+
+This serves three purposes:
+
+1. **Billing** — platform counts actual steps for pricing
+2. **Real-time updates** — consumers on SSE/WebSocket see progress
+3. **Proof** — screenshots exist for dispute resolution, no AI analysis needed
+
+The platform tracks the step count and cuts off the task if it hits the
+consumer's max budget.
+
 ## Task Lifecycle States
 
 ```
-submitted → decomposing → priced → paid → queued → dispatched → running → completed
-                                                        │                      │
-                                                        ├── waiting ──┘        │
-                                                        │   (async only)       │
-                                                        │                      │
-                                                        └── failed ────────────┘
+submitted → estimating → queued → offered → claimed → running → completed
+                                                │                   │
+                                                ├── waiting ──┘     │
+                                                │   (async only)    │
+                                                │                   │
+                                                └── failed ─────────┘
+```
+
+## How Consumers Receive Results
+
+### Polling (any client)
+
+```
+GET /tasks/:id → { status: "running", steps_completed: 2 }
+GET /tasks/:id → { status: "completed", result: {...} }
+```
+
+### SSE (real-time, read-only)
+
+```
+GET /tasks/:id/stream (Accept: text/event-stream)
+
+← event: status
+  data: { status: "queued" }
+
+← event: status
+  data: { status: "claimed" }
+
+← event: step
+  data: { step: 1, action: "navigated" }
+
+← event: complete
+  data: { result: {...} }
+```
+
+### WebSocket (async mode, bidirectional)
+
+```
+WS /tasks/:id/stream
+
+← { status: "running" }
+← { status: "waiting", waiting_for: "otp", message: "Enter OTP sent to +1***45" }
+→ { type: "input", value: "483921" }
+← { status: "running" }
+← { status: "completed", result: {...} }
 ```
 
 ## Task Result
@@ -109,15 +194,21 @@ submitted → decomposing → priced → paid → queued → dispatched → runn
 ```
 {
   "task_id": "uuid",
-  "status": "completed" | "failed",
-  "steps_executed": 5,
-  "steps_total": 5,
+  "status": "completed",
+  "steps_executed": 4,
+  "estimated_steps": 5,
+  "actual_cost": 1600,
+  "max_budget": 3000,
   "result": {
-    "screenshots": ["https://..."],
+    "screenshots": ["https://cdn.../signed-url"],
     "extracted_data": { ... },
-    "final_url": "https://example.com/signup/confirmation"
+    "final_url": "https://example.com/signup/confirmation",
+    "files": [
+      { "name": "report.xlsx", "url": "https://cdn.../signed-url", "expires_at": "..." }
+    ]
   },
-  "error": null,
   "duration_ms": 12400
 }
 ```
+
+Files and screenshots are stored in S3/R2 with signed, expiring URLs (24h TTL).
