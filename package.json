@@ -1,0 +1,17 @@
+{
+  "name": "rent-my-browser",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Browser-as-a-service marketplace — rent idle OpenClaw node browsers for automated tasks",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @rent-my-browser/server dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
