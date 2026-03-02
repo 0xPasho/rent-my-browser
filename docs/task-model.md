@@ -26,10 +26,10 @@ Authorization: Bearer <api_key>
       "email": "john@example.com"
     },
     "tier": "real",          // optional: "headless" | "real" | "auto"
-    "mode": "simple",        // "simple" | "adversarial" | "async"
+    "mode": "simple",        // "simple" | "adversarial"
     "geo": "US"              // optional geo requirement
   },
-  "max_budget": 3000         // max sats the consumer is willing to pay
+  "max_budget": 300          // max credits the consumer is willing to pay
 }
 ```
 
@@ -43,9 +43,9 @@ Response:
     "tier": "real",
     "complexity": "medium",
     "estimated_steps": 5,
-    "estimated_cost": 2000
+    "estimated_cost": 100
   },
-  "max_budget": 3000,
+  "max_budget": 300,
   "status": "queued"
 }
 ```
@@ -73,7 +73,7 @@ The AI layer processes the task before dispatch:
 The estimation is **not sent to the node**. It exists for pricing and validation
 only. The node receives the original text goal + context.
 
-## Three Task Modes
+## Two Task Modes
 
 ### Simple
 
@@ -82,7 +82,6 @@ Standard browser automation. Goal in, result out.
 - Navigate, click, type, scrape, screenshot
 - No special behavior simulation
 - Available on both headless and real nodes
-- Stateless from the platform's perspective
 
 ### Adversarial
 
@@ -96,26 +95,6 @@ Same as simple, but with a **human behavior simulation layer**:
 
 This mode is for sites with bot detection that analyze behavioral patterns
 beyond just browser fingerprinting. Only available on real machine nodes.
-
-### Async
-
-Tasks that **pause waiting for external events**:
-
-- OTP codes (SMS, authenticator app)
-- Email confirmations (click a link in an email)
-- Third-party callbacks
-- Manual human verification steps
-
-Async tasks require:
-
-- A **state machine** on the platform: `running → waiting → running → complete`
-- **WebSocket connection** to the consumer for real-time status updates
-- **Consumer input channel** — the consumer may need to provide data mid-task
-  (e.g., forward an OTP code)
-- **Timeout policy** — how long to wait for the external event
-- The browser session stays alive during the wait
-
-Only available on real machine nodes.
 
 ## Node Step Reporting
 
@@ -133,7 +112,7 @@ POST /tasks/:id/steps
 This serves three purposes:
 
 1. **Billing** — platform counts actual steps for pricing
-2. **Real-time updates** — consumers on SSE/WebSocket see progress
+2. **Progress** — consumers polling see step count progress
 3. **Proof** — screenshots exist for dispute resolution, no AI analysis needed
 
 The platform tracks the step count and cuts off the task if it hits the
@@ -143,50 +122,18 @@ consumer's max budget.
 
 ```
 submitted → estimating → queued → offered → claimed → running → completed
-                                                │                   │
-                                                ├── waiting ──┘     │
-                                                │   (async only)    │
-                                                │                   │
-                                                └── failed ─────────┘
+                                                │
+                                                └── failed
 ```
 
 ## How Consumers Receive Results
 
-### Polling (any client)
+Consumers poll `GET /tasks/:id` until `status` is `completed` or `failed`.
+Tasks typically take 10-60 seconds.
 
 ```
 GET /tasks/:id → { status: "running", steps_completed: 2 }
 GET /tasks/:id → { status: "completed", result: {...} }
-```
-
-### SSE (real-time, read-only)
-
-```
-GET /tasks/:id/stream (Accept: text/event-stream)
-
-← event: status
-  data: { status: "queued" }
-
-← event: status
-  data: { status: "claimed" }
-
-← event: step
-  data: { step: 1, action: "navigated" }
-
-← event: complete
-  data: { result: {...} }
-```
-
-### WebSocket (async mode, bidirectional)
-
-```
-WS /tasks/:id/stream
-
-← { status: "running" }
-← { status: "waiting", waiting_for: "otp", message: "Enter OTP sent to +1***45" }
-→ { type: "input", value: "483921" }
-← { status: "running" }
-← { status: "completed", result: {...} }
 ```
 
 ## Task Result
@@ -197,8 +144,8 @@ WS /tasks/:id/stream
   "status": "completed",
   "steps_executed": 4,
   "estimated_steps": 5,
-  "actual_cost": 1600,
-  "max_budget": 3000,
+  "actual_cost": 40,
+  "max_budget": 300,
   "result": {
     "screenshots": ["https://cdn.../signed-url"],
     "extracted_data": { ... },

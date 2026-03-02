@@ -21,7 +21,7 @@ tier, or the system can auto-select based on the target site and task mode.
 - **Browser**: Real Google Chrome (not Chromium), launched normally
 - **Display**: Physical or virtual display (Xvfb)
 - **IP type**: Residential (high value for consumers)
-- **Supported task modes**: Simple, Adversarial, Async
+- **Supported task modes**: Simple, Adversarial
 - **Consumer pricing**: Premium tier
 - **Bot detection**: Passes — real browser, real fingerprint, no automation flags
 - **Best for**: Sites with bot detection, form submissions on production sites,
@@ -74,7 +74,7 @@ POST /nodes/:id/heartbeat
     "ip_type": "residential" | "datacenter"
   },
   "capabilities": {
-    "modes": ["simple", "adversarial", "async"],
+    "modes": ["simple", "adversarial"],
     "max_concurrent": 1
   }
 }

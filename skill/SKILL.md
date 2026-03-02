@@ -33,7 +33,7 @@ the owner, no active conversations, no scheduled work.
    - Node type: `headless` (VPS) or `real` (GUI machine)
    - Browser: Chrome version, Playwright version
    - Geo: IP-based location
-   - Supported task modes: `simple`, `adversarial`, `async`
+   - Supported task modes: `simple`, `adversarial`
 
 ### On task received → Execute
 
@@ -41,9 +41,7 @@ the owner, no active conversations, no scheduled work.
 2. The agent interprets the goal using the browser tool.
 3. For `adversarial` mode tasks, enable human behavior simulation
    (natural mouse movement, realistic typing delays, random pauses).
-4. For `async` mode tasks, the agent waits for external events (OTP, email)
-   and reports status updates via WebSocket.
-5. On completion, return results (screenshots, extracted data, success/failure).
+4. On completion, return results (screenshots, extracted data, success/failure).
 
 ### On owner task arrives → Stop renting
 

@@ -39,25 +39,11 @@ $10 topup = 1000 credits
 
 Consumers prepay credits. Balance is stored in Postgres, tied to the API key.
 
-### Top up — Two rails
-
-#### Stripe (for humans, teams, businesses)
+### Top up
 
 ```
 POST /accounts/credits
-{ "amount": 1000, "method": "stripe" }
-→ { "checkout_url": "https://checkout.stripe.com/..." }
-
-(consumer completes Stripe Checkout)
-
-Webhook confirms payment → credits added
-```
-
-#### USDC on Base (for autonomous agents, crypto users)
-
-```
-POST /accounts/credits
-{ "amount": 1000, "method": "crypto" }
+{ "amount": 1000 }
 → 402 {
     chain: "base",
     token: "USDC",
@@ -68,13 +54,14 @@ POST /accounts/credits
   }
 
 Agent sends USDC to address with memo → platform detects payment → credits added
+
+POST /accounts/credits/confirm
+{ "tx_hash": "0x..." }
+→ { "balance": 1800 }
 ```
 
-This is the x402 flow. Fully programmatic, no human needed. An autonomous AI
-agent can top up and submit tasks without any human in the loop.
-
-Both rails add credits to the same balance. The rest of the system doesn't
-care how the credits got there.
+Fully programmatic. An autonomous AI agent can top up and submit tasks
+without any human in the loop.
 
 ### Check balance
 
@@ -104,7 +91,6 @@ upfront, but the consumer pays for what actually happens.
 | Headless | Simple | 5 credits ($0.05) | 50 credits ($0.50) |
 | Real | Simple | 10 credits ($0.10) | 100 credits ($1.00) |
 | Real | Adversarial | 15 credits ($0.15) | 150 credits ($1.50) |
-| Real | Async | 20 credits ($0.20) | 200 credits ($2.00) |
 
 Starting prices. Tuned based on market demand.
 
@@ -232,27 +218,12 @@ Balance is in credits. 4500 credits = $45.00.
 
 ### Withdraw
 
-Two payout methods, mirroring the topup rails:
-
-#### Stripe Connect (for humans)
-
-Operators onboard once via Stripe Connect (handles KYC/identity). When they
-request withdrawal, the platform transfers via Stripe to their bank account.
-
-```
-POST /accounts/withdrawals
-{ "method": "stripe", "amount": 4500 }
-→ { "amount": 4500, "usd": "$45.00", "status": "processing", "eta": "1-2 days" }
-```
-
-#### USDC on Base (for agents, crypto users)
-
 Platform sends USDC to the wallet address used to register. No need to
 provide an address — it's already on file.
 
 ```
 POST /accounts/withdrawals
-{ "method": "crypto", "amount": 4500 }
+{ "amount": 4500 }
 → { "amount": 4500, "usd": "$45.00", "address": "0x...", "tx_hash": "0x...", "status": "sent" }
 ```
 
@@ -260,11 +231,11 @@ POST /accounts/withdrawals
 
 - Minimum withdrawal: 500 credits ($5.00)
 - No real-time per-task payouts — too expensive and complex
-- Manual review for v1. Automatic via Stripe Connect / onchain for v2.
+- Manual review for v1. Automatic onchain for v2.
 
 ### No custody, no wallet management
 
 - The platform holds a **ledger balance** (a number in Postgres), not money.
-- Consumer pays in → platform receives (Stripe or USDC to platform address).
-- Operator cashes out → platform sends (Stripe Connect or USDC to their address).
-- One platform wallet / one Stripe account. Everyone else has a number.
+- Consumer pays in → USDC goes to platform wallet.
+- Operator cashes out → platform sends USDC to their registered wallet.
+- One platform wallet. Everyone else has a number.

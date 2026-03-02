@@ -18,9 +18,9 @@ All endpoints use JSON. Auth via `Authorization: Bearer <api_key>` unless noted.
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | GET | `/accounts/me` | API key | Get account info: balance, total spent/earned, tasks completed. |
-| POST | `/accounts/credits` | API key | Top up credits. `method`: `"stripe"` or `"crypto"`. Stripe returns checkout URL. Crypto returns 402 with USDC payment details. |
+| POST | `/accounts/credits` | API key | Top up credits via USDC on Base. Returns 402 with payment details. |
 | POST | `/accounts/credits/confirm` | API key | Confirm crypto topup with tx_hash. Credits added. |
-| POST | `/accounts/withdrawals` | API key (operator) | Withdraw earnings. `method`: `"stripe"` or `"crypto"`. Crypto sends USDC to registered wallet. |
+| POST | `/accounts/withdrawals` | API key (operator) | Withdraw earnings. USDC sent to registered wallet. |
 
 ## Tasks (Consumer)
 
@@ -28,8 +28,6 @@ All endpoints use JSON. Auth via `Authorization: Bearer <api_key>` unless noted.
 |---|---|---|---|
 | POST | `/tasks` | API key | Submit a task. Body: `{ goal, context, max_budget }`. Returns 202 with task_id + estimate. |
 | GET | `/tasks/:id` | API key | Get task status and result (polling). |
-| GET | `/tasks/:id/stream` | API key | SSE stream of task status updates and step progress. |
-| WS | `/tasks/:id/stream` | API key | WebSocket for async mode. Bidirectional — receive status, send mid-task input (OTP etc). |
 | POST | `/tasks/:id/confirm` | None | Confirm x402 payment for a task (tx_hash). For consumers paying per-task without an account. |
 
 ## Nodes (Operator)
@@ -53,11 +51,21 @@ All endpoints use JSON. Auth via `Authorization: Bearer <api_key>` unless noted.
 | POST | `/tasks/:id/steps` | API key | Report a completed step. Body: `{ step, action, screenshot }`. |
 | POST | `/tasks/:id/result` | API key | Submit final result. Multipart for file uploads. Body: `{ status, extracted_data, final_url }`. |
 
+## MCP
+
+The MCP server is a thin wrapper over the REST API. Available at `/mcp`.
+See [MCP docs](./mcp.md) for tools and setup.
+
+| MCP Tool | REST Equivalent |
+|---|---|
+| `submit_task` | `POST /tasks` |
+| `get_task` | `GET /tasks/:id` |
+| `get_balance` | `GET /accounts/me` |
+
 ## Webhooks (Internal)
 
 | Source | Description |
 |---|---|
-| Stripe | Payment confirmation for topups via Stripe Checkout. |
 | Base/USDC | Onchain payment detection for crypto topups and registration. |
 
 ## Response Patterns

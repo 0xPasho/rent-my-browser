@@ -14,14 +14,15 @@ The Uber model.
 ```
 ┌─────────────┐         ┌──────────────────────┐         ┌─────────────────┐
 │  Consumer    │         │  Orchestration       │         │  Node           │
-│             │  POST   │  Server              │  HTTP   │  (OpenClaw)     │
+│             │  REST   │  Server              │  HTTP   │  (OpenClaw)     │
 │  - API key  │────────>│                      │<────────│                 │
-│  - Credits  │  task   │  - Task intake       │  poll   │  - Skill        │
-│             │<────────│  - AI validation     │────────>│  - Browser      │
-│             │  result │  - Pricing (tier)    │  offer  │  - Agent        │
-│             │         │  - Offer broadcast   │         │                 │
+│  - Credits  │  or     │  - Task intake       │  poll   │  - Skill        │
+│  - MCP      │  MCP    │  - AI validation     │────────>│  - Browser      │
+│             │<────────│  - Pricing (tier)    │  offer  │  - Agent        │
+│             │  result │  - Offer broadcast   │         │                 │
 │             │         │  - Ledger            │         │                 │
 │             │         │  - File storage      │         │                 │
+│             │         │  - MCP server        │         │                 │
 └─────────────┘         └──────────────────────┘         └─────────────────┘
 ```
 
@@ -46,8 +47,6 @@ POST /tasks             → 202 { task_id, estimate }
 
 # Get results
 GET  /tasks/:id          → polling
-GET  /tasks/:id/stream   → SSE (real-time updates)
-WS   /tasks/:id/stream   → WebSocket (async mode, bidirectional)
 ```
 
 A website, if ever built, is just a frontend calling these same endpoints.
@@ -76,17 +75,13 @@ programmatically. Both end up with an API key.
    at their max budget. Unused budget is released back to their balance.
 10. Server records the transaction in the **double-entry ledger**, splitting
     the charge into platform fee + operator balance.
-11. Consumer receives the result via polling, SSE, or WebSocket.
+11. Consumer receives the result via polling (`GET /tasks/:id`).
 
 ## How Consumers Receive Results
 
-Three delivery mechanisms, same underlying task state:
-
-| Endpoint | Method | Use case |
-|---|---|---|
-| `/tasks/:id` | GET | Polling. Any client. Backend, CLI, CI. |
-| `/tasks/:id/stream` | GET (SSE) | Real-time status updates. Frontends, dashboards. |
-| `/tasks/:id/stream` | WS | Async mode only. Bidirectional — consumer can send mid-task input (OTP, etc). |
+Consumers poll `GET /tasks/:id` for status and results. Tasks typically
+take 10-60 seconds. Poll every few seconds until `status` is `completed`
+or `failed`.
 
 ## File Handling
 
@@ -129,11 +124,12 @@ rent-my-browser/
   (GUI, premium, anti-detection). The architecture handles both.
 - **Node score.** Tracks claim rate, success rate, response time, honesty.
   Low-score nodes get fewer offers.
-- **Payment before execution.** Credits (1 credit = $0.01) funded via Stripe
-  or USDC on Base. Max budget held upfront, actual charge on completion.
-- **Dual payment rails.** Stripe for humans, USDC on Base for autonomous
-  agents. Both add credits to the same balance.
+- **Payment before execution.** Credits (1 credit = $0.01) funded via USDC
+  on Base. Max budget held upfront, actual charge on completion.
 - **Wallet-based identity.** No passwords, no OAuth. Wallet address is the
   account. Payment proves creation, signature proves ownership. Works for
   both humans (MetaMask) and agents (programmatic key pairs).
   See [Auth](./auth.md).
+- **MCP-native.** AI agents can discover and use the platform via MCP with
+  one config line. The MCP server is a thin wrapper over the REST API —
+  same auth, same logic. See [MCP](./mcp.md).
