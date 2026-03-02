@@ -1,0 +1,143 @@
+import { eq, and, lt } from "drizzle-orm";
+import { db } from "../../db/index.js";
+import { nodes } from "../../db/schema/nodes.js";
+import { offers } from "../../db/schema/offers.js";
+import { tasks } from "../../db/schema/tasks.js";
+import { NotFoundError, AuthError } from "../../lib/errors.js";
+import { getPricePerStep } from "../tasks/tasks.lib.js";
+
+interface HeartbeatInput {
+  type: "headless" | "real";
+  browser?: { name: string; version: string };
+  geo?: { country: string; region?: string; city?: string; ip_type: string };
+  capabilities?: { modes: string[]; max_concurrent: number };
+}
+
+export async function processHeartbeat(
+  nodeId: string,
+  accountId: string,
+  input: HeartbeatInput,
+) {
+  const [node] = await db
+    .select({ id: nodes.id, accountId: nodes.accountId })
+    .from(nodes)
+    .where(eq(nodes.id, nodeId));
+
+  if (!node) {
+    throw new NotFoundError("Node not found");
+  }
+
+  if (node.accountId !== accountId) {
+    throw new AuthError("Node does not belong to this account");
+  }
+
+  await db
+    .update(nodes)
+    .set({
+      type: input.type,
+      browser: input.browser || null,
+      geo: input.geo || null,
+      capabilities: input.capabilities || null,
+      isOnline: true,
+      lastHeartbeat: new Date(),
+    })
+    .where(eq(nodes.id, nodeId));
+
+  return { status: "ok" };
+}
+
+export async function getNodeOffers(nodeId: string, accountId: string) {
+  const [node] = await db
+    .select({ id: nodes.id, accountId: nodes.accountId })
+    .from(nodes)
+    .where(eq(nodes.id, nodeId));
+
+  if (!node) {
+    throw new NotFoundError("Node not found");
+  }
+
+  if (node.accountId !== accountId) {
+    throw new AuthError("Node does not belong to this account");
+  }
+
+  // Get pending offers for this node that haven't expired
+  const pendingOffers = await db
+    .select({
+      offer_id: offers.id,
+      task_id: offers.taskId,
+      expires_at: offers.expiresAt,
+    })
+    .from(offers)
+    .where(
+      and(
+        eq(offers.nodeId, nodeId),
+        eq(offers.status, "pending"),
+      ),
+    );
+
+  // Enrich with task summary and payout info
+  const enriched = await Promise.all(
+    pendingOffers
+      .filter((o) => new Date() < o.expires_at)
+      .map(async (offer) => {
+        const [task] = await db
+          .select({
+            goal: tasks.goal,
+            mode: tasks.mode,
+            tier: tasks.tier,
+            estimatedSteps: tasks.estimatedSteps,
+          })
+          .from(tasks)
+          .where(eq(tasks.id, offer.task_id));
+
+        if (!task) return null;
+
+        const pricePerStep = getPricePerStep(
+          task.tier as "headless" | "real",
+          task.mode as "simple" | "adversarial",
+        );
+
+        // Operator gets 80% of per-step price
+        const payoutPerStep = Math.floor(pricePerStep * 0.8);
+
+        return {
+          offer_id: offer.offer_id,
+          task_id: offer.task_id,
+          goal_summary: task.goal.slice(0, 100),
+          mode: task.mode,
+          estimated_steps: task.estimatedSteps,
+          payout_per_step: payoutPerStep,
+          expires_at: offer.expires_at,
+        };
+      }),
+  );
+
+  return { offers: enriched.filter(Boolean) };
+}
+
+export async function getNodeForAccount(accountId: string) {
+  const [node] = await db
+    .select({ id: nodes.id })
+    .from(nodes)
+    .where(eq(nodes.accountId, accountId))
+    .limit(1);
+
+  return node || null;
+}
+
+export async function markStaleNodesOffline(): Promise<number> {
+  const staleThreshold = new Date(Date.now() - 60_000); // 60 seconds
+
+  const result = await db
+    .update(nodes)
+    .set({ isOnline: false })
+    .where(
+      and(
+        eq(nodes.isOnline, true),
+        lt(nodes.lastHeartbeat, staleThreshold),
+      ),
+    )
+    .returning({ id: nodes.id });
+
+  return result.length;
+}

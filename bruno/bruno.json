@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Rent My Browser",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

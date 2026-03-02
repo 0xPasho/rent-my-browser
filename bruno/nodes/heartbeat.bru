@@ -1,0 +1,35 @@
+meta {
+  name: Node Heartbeat
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/nodes/{{nodeId}}/heartbeat
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{operatorKey}}
+}
+
+body:json {
+  {
+    "type": "real",
+    "browser": {
+      "name": "chrome",
+      "version": "124.0.6367.91"
+    },
+    "geo": {
+      "country": "MX",
+      "region": "CDMX",
+      "city": "Mexico City",
+      "ip_type": "residential"
+    },
+    "capabilities": {
+      "modes": ["simple", "adversarial"],
+      "max_concurrent": 1
+    }
+  }
+}

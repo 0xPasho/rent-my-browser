@@ -1,0 +1,17 @@
+meta {
+  name: Auth Challenge
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/auth/challenge
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "wallet_address": "{{walletAddress}}"
+  }
+}

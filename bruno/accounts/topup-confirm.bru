@@ -1,0 +1,21 @@
+meta {
+  name: Confirm Topup
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/accounts/credits/confirm
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+body:json {
+  {
+    "tx_hash": "{{txHash}}"
+  }
+}

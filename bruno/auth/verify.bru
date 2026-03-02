@@ -1,0 +1,18 @@
+meta {
+  name: Auth Verify
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/auth/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "wallet_address": "{{walletAddress}}",
+    "signature": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

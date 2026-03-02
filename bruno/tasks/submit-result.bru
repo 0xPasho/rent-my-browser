@@ -1,0 +1,25 @@
+meta {
+  name: Submit Result
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/tasks/{{taskId}}/result
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{operatorKey}}
+}
+
+body:json {
+  {
+    "status": "completed",
+    "extracted_data": {
+      "confirmation_id": "ABC123"
+    },
+    "final_url": "https://example.com/signup/success"
+  }
+}

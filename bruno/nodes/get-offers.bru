@@ -1,0 +1,15 @@
+meta {
+  name: Get Node Offers
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/nodes/{{nodeId}}/offers
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{operatorKey}}
+}

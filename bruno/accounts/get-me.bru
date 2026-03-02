@@ -1,0 +1,15 @@
+meta {
+  name: Get Account Info
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/accounts/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}

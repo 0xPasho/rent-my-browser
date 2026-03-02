@@ -1,0 +1,30 @@
+meta {
+  name: Submit Task
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/tasks
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+body:json {
+  {
+    "goal": "Go to example.com/signup, fill the form with the provided data, and submit it",
+    "context": {
+      "data": {
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "tier": "auto",
+      "mode": "simple"
+    },
+    "max_budget": 300
+  }
+}

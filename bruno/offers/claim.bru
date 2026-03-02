@@ -1,0 +1,21 @@
+meta {
+  name: Claim Offer
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/offers/{{offerId}}/claim
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{operatorKey}}
+}
+
+body:json {
+  {
+    "node_id": "{{nodeId}}"
+  }
+}

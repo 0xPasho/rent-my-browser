@@ -1,0 +1,22 @@
+meta {
+  name: Report Step
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/tasks/{{taskId}}/steps
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{operatorKey}}
+}
+
+body:json {
+  {
+    "step": 1,
+    "action": "Navigated to example.com/signup"
+  }
+}

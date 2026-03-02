@@ -1,0 +1,21 @@
+meta {
+  name: Withdraw Earnings
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/accounts/withdrawals
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
+
+body:json {
+  {
+    "amount": 5000
+  }
+}

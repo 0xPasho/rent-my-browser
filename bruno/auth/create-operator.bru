@@ -1,0 +1,18 @@
+meta {
+  name: Create Operator Account
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/nodes
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "wallet_address": "{{walletAddress}}",
+    "node_type": "real"
+  }
+}
