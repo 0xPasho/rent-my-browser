@@ -1,9 +1,10 @@
-import { eq, and, sql, gt, desc, inArray } from "drizzle-orm";
+import { eq, and, sql, gt, desc } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { tasks } from "../../db/schema/tasks.js";
 import { nodes } from "../../db/schema/nodes.js";
 import { offers } from "../../db/schema/offers.js";
 import { getPricePerStep } from "../tasks/tasks.lib.js";
+import { releaseBudget } from "../ledger/ledger.service.js";
 
 const OFFER_TTL_MS = 15_000; // 15 seconds
 const MAX_OFFERS_PER_ROUND = 5;
@@ -272,16 +273,25 @@ export async function rebroadcastExpiredOffers(): Promise<void> {
     const excludeNodeIds = allOffers.map((o) => o.nodeId);
 
     if (round > MAX_ROUTING_ROUNDS) {
-      // Max rounds exceeded — fail the task
+      // Max rounds exceeded — fail the task and release budget
       console.log(
         `Dispatch: task ${taskId} — max rounds exceeded, failing task`,
       );
+
+      const [task] = await db
+        .select({ accountId: tasks.accountId, maxBudget: tasks.maxBudget })
+        .from(tasks)
+        .where(eq(tasks.id, taskId));
+
       await db
         .update(tasks)
         .set({ status: "failed", completedAt: new Date() })
         .where(eq(tasks.id, taskId));
 
-      // TODO: Release the budget hold back to the consumer
+      if (task) {
+        await releaseBudget(task.accountId, task.maxBudget, taskId);
+      }
+
       continue;
     }
 

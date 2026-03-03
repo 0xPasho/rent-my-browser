@@ -15,6 +15,7 @@ import { broadcastOffers } from "../dispatch/dispatch.service.js";
 import { uploadScreenshot } from "../storage/storage.service.js";
 import { calculateEstimatedCost, calculateActualCost, getPricePerStep } from "./tasks.lib.js";
 import { sanitizeValue } from "../../lib/sanitize.js";
+import { updateNodeScore } from "../nodes/nodes.service.js";
 
 interface CreateTaskInput {
   goal: string;
@@ -333,18 +334,21 @@ export async function submitResult(
 
   // Settle payment if completed
   if (input.status === "completed" && actualCost > 0) {
-    // Release unused hold
     const unusedBudget = task.maxBudget - actualCost;
     if (unusedBudget > 0) {
       await releaseBudget(task.accountId, unusedBudget, taskId);
     }
-
-    // Charge consumer → split to platform + operator
     await chargeTask(task.accountId, node.accountId, actualCost, taskId);
   } else {
-    // Failed task — release entire hold
     await releaseBudget(task.accountId, task.maxBudget, taskId);
   }
+
+  // Update node score
+  await updateNodeScore(task.nodeId!, {
+    status: input.status,
+    stepsCompleted: task.stepsCompleted,
+    estimatedSteps: task.estimatedSteps,
+  });
 
   return {
     task_id: taskId,

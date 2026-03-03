@@ -168,6 +168,52 @@ export async function getNodeForAccount(accountId: string) {
   return node || null;
 }
 
+export async function updateNodeScore(
+  nodeId: string,
+  taskResult: {
+    status: "completed" | "failed";
+    stepsCompleted: number;
+    estimatedSteps: number | null;
+  },
+): Promise<void> {
+  const [node] = await db
+    .select({ score: nodes.score })
+    .from(nodes)
+    .where(eq(nodes.id, nodeId));
+
+  if (!node) return;
+
+  let delta = 0;
+
+  if (taskResult.status === "completed") {
+    // Successful completion: +2 points
+    delta += 2;
+
+    // Step honesty: if actual steps are wildly different from estimate, penalize
+    if (taskResult.estimatedSteps && taskResult.estimatedSteps > 0) {
+      const ratio = taskResult.stepsCompleted / taskResult.estimatedSteps;
+      if (ratio > 3) {
+        // Reported 3x more steps than estimated — suspicious
+        delta -= 5;
+      } else if (ratio > 2) {
+        // Reported 2x more steps — mild penalty
+        delta -= 2;
+      }
+    }
+  } else {
+    // Failed task: -3 points
+    delta -= 3;
+  }
+
+  // Clamp score between 0 and 100
+  const newScore = Math.max(0, Math.min(100, node.score + delta));
+
+  await db
+    .update(nodes)
+    .set({ score: newScore })
+    .where(eq(nodes.id, nodeId));
+}
+
 export async function markStaleNodesOffline(): Promise<number> {
   const staleThreshold = new Date(Date.now() - 60_000); // 60 seconds
 
