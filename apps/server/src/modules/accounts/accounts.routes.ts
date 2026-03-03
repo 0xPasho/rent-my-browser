@@ -1,19 +1,42 @@
 import { Router, type Router as RouterType } from "express";
 import { z } from "zod";
+import { paymentMiddleware } from "@x402/express";
+import { env, BASE_CHAIN_ID, isSandbox } from "../../env.js";
+import { x402Server } from "../../lib/x402.js";
 import { auth } from "../../middleware/auth.js";
 import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
 import {
+  createConsumerAccount,
   getAccount,
-  initiateTopup,
-  confirmTopup,
+  addCredits,
   requestWithdrawal,
+  createChallenge,
+  verifyChallenge,
 } from "./accounts.service.js";
 
 const router: RouterType = Router();
 
-// GET /accounts/me — Get account info
+// --- Registration (free) ---
+
+const walletSchema = z.object({
+  wallet_address: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid wallet address"),
+});
+
+router.post(
+  "/accounts",
+  validate(walletSchema),
+  asyncHandler(async (req, res) => {
+    const result = await createConsumerAccount(req.body.wallet_address);
+    res.status(201).json(result);
+  }),
+);
+
+// --- Account info ---
+
 router.get(
   "/accounts/me",
   auth,
@@ -23,46 +46,118 @@ router.get(
   }),
 );
 
-// POST /accounts/credits — Top up credits
-const topupSchema = z.object({
-  amount: z.number().int().positive().min(100, "Minimum topup is 100 credits ($1.00)"),
-});
+// --- Auth challenge/verify ---
 
 router.post(
-  "/accounts/credits",
-  auth,
-  requireType("consumer"),
-  validate(topupSchema),
+  "/auth/challenge",
+  validate(walletSchema),
   asyncHandler(async (req, res) => {
-    const { amount } = req.body;
-    const result = await initiateTopup(req.account!.id, amount);
-    res.status(402).json({
-      message: "Payment required to complete topup",
-      ...result,
-    });
-  }),
-);
-
-// POST /accounts/credits/confirm — Confirm topup
-const confirmTopupSchema = z.object({
-  tx_hash: z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid transaction hash"),
-});
-
-router.post(
-  "/accounts/credits/confirm",
-  auth,
-  requireType("consumer"),
-  validate(confirmTopupSchema),
-  asyncHandler(async (req, res) => {
-    const { tx_hash } = req.body;
-    const result = await confirmTopup(req.account!.id, tx_hash);
+    const result = await createChallenge(req.body.wallet_address);
     res.json(result);
   }),
 );
 
-// POST /accounts/withdrawals — Withdraw earnings
+const verifySchema = z.object({
+  wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  signature: z.string().regex(/^0x[a-fA-F0-9]+$/),
+});
+
+router.post(
+  "/auth/verify",
+  validate(verifySchema),
+  asyncHandler(async (req, res) => {
+    const { wallet_address, signature } = req.body;
+    const result = await verifyChallenge(wallet_address, signature);
+    res.json(result);
+  }),
+);
+
+// --- Credit topup (x402) ---
+
+const TOPUP_TIERS: Record<string, { credits: number; price: string }> = {
+  "100": { credits: 100, price: "$1" },
+  "500": { credits: 500, price: "$5" },
+  "1000": { credits: 1000, price: "$10" },
+  "5000": { credits: 5000, price: "$50" },
+  "20000": { credits: 20000, price: "$200" },
+};
+
+const x402TopupRoutes: Record<string, any> = {};
+for (const [key, tier] of Object.entries(TOPUP_TIERS)) {
+  x402TopupRoutes[`POST /accounts/credits/crypto/${key}`] = {
+    accepts: [
+      {
+        scheme: "exact",
+        price: tier.price,
+        network: BASE_CHAIN_ID,
+        payTo: env.PLATFORM_WALLET_ADDRESS,
+      },
+    ],
+    description: `Top up ${tier.credits} credits (${tier.price} USDC)`,
+  };
+}
+
+router.post(
+  "/accounts/credits/crypto/:tier",
+  auth,
+  requireType("consumer"),
+  paymentMiddleware(x402TopupRoutes, x402Server),
+  asyncHandler(async (req, res) => {
+    const tierKey = req.params.tier as string;
+    const tier = TOPUP_TIERS[tierKey];
+    if (!tier) {
+      res
+        .status(400)
+        .json({ error: "INVALID_TIER", message: "Invalid topup tier" });
+      return;
+    }
+    const result = await addCredits(req.account!.id, tier.credits);
+    res.json(result);
+  }),
+);
+
+// --- Credit topup (stripe — stub) ---
+
+router.post(
+  "/accounts/credits/stripe",
+  auth,
+  requireType("consumer"),
+  asyncHandler(async (_req, res) => {
+    res.status(501).json({
+      error: "NOT_IMPLEMENTED",
+      message:
+        "Stripe topup not yet available. Use /accounts/credits/crypto/:tier.",
+    });
+  }),
+);
+
+// --- Alternative topup (sandbox/testnet only) ---
+
+if (isSandbox) {
+  const alternativeSchema = z.object({
+    amount: z.number().int().positive(),
+  });
+
+  router.post(
+    "/accounts/credits/alternative",
+    auth,
+    requireType("consumer"),
+    validate(alternativeSchema),
+    asyncHandler(async (req, res) => {
+      const result = await addCredits(req.account!.id, req.body.amount);
+      res.json(result);
+    }),
+  );
+}
+
+// --- Withdrawals ---
+
 const withdrawSchema = z.object({
-  amount: z.number().int().positive().min(500, "Minimum withdrawal is 500 credits ($5.00)"),
+  amount: z
+    .number()
+    .int()
+    .positive()
+    .min(500, "Minimum withdrawal is 500 credits ($5.00)"),
 });
 
 router.post(
@@ -71,8 +166,7 @@ router.post(
   requireType("operator"),
   validate(withdrawSchema),
   asyncHandler(async (req, res) => {
-    const { amount } = req.body;
-    const result = await requestWithdrawal(req.account!.id, amount);
+    const result = await requestWithdrawal(req.account!.id, req.body.amount);
     res.json(result);
   }),
 );

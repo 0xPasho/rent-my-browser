@@ -1,11 +1,11 @@
 meta {
-  name: Confirm Topup
+  name: Top Up Alternative (sandbox only)
   type: http
-  seq: 3
+  seq: 4
 }
 
 post {
-  url: {{baseUrl}}/accounts/credits/confirm
+  url: {{baseUrl}}/accounts/credits/alternative
   body: json
   auth: bearer
 }
@@ -16,6 +16,6 @@ auth:bearer {
 
 body:json {
   {
-    "tx_hash": "{{txHash}}"
+    "amount": 1000
   }
 }

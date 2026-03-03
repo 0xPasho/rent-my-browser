@@ -1,10 +1,53 @@
 import { eq, and, lt } from "drizzle-orm";
 import { db } from "../../db/index.js";
+import { accounts } from "../../db/schema/accounts.js";
 import { nodes } from "../../db/schema/nodes.js";
 import { offers } from "../../db/schema/offers.js";
 import { tasks } from "../../db/schema/tasks.js";
-import { NotFoundError, AuthError } from "../../lib/errors.js";
+import { ValidationError, NotFoundError, AuthError } from "../../lib/errors.js";
+import {
+  generateApiKey,
+  hashApiKey,
+  signDashboardJwt,
+} from "../auth/auth.lib.js";
 import { getPricePerStep } from "../tasks/tasks.lib.js";
+
+export async function createNodeOperator(
+  walletAddress: string,
+  nodeType: "headless" | "real",
+) {
+  const existing = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.walletAddress, walletAddress))
+    .limit(1);
+
+  if (existing.length > 0) {
+    throw new ValidationError("Account already exists for this wallet address");
+  }
+
+  const rawApiKey = generateApiKey("operator");
+  const apiKeyHash = hashApiKey(rawApiKey);
+
+  const [account] = await db
+    .insert(accounts)
+    .values({ walletAddress, apiKeyHash, type: "operator" })
+    .returning({ id: accounts.id });
+
+  const [node] = await db
+    .insert(nodes)
+    .values({ accountId: account.id, type: nodeType })
+    .returning({ id: nodes.id });
+
+  const jwt = await signDashboardJwt(account.id);
+
+  return {
+    account_id: account.id,
+    node_id: node.id,
+    api_key: rawApiKey,
+    dashboard_url: `https://app.rentmybrowser.com/session?token=${jwt}`,
+  };
+}
 
 interface HeartbeatInput {
   type: "headless" | "real";

@@ -32,19 +32,50 @@ const SYSTEM_PROMPT = `You are a browser task estimator and router. Given a task
 Return ONLY valid JSON, no markdown or explanation.`;
 
 const BOT_DETECTION_SITES = [
-  "facebook.com", "instagram.com", "twitter.com", "x.com",
-  "google.com", "youtube.com", "linkedin.com", "amazon.com",
-  "netflix.com", "spotify.com", "tiktok.com", "reddit.com",
-  "github.com", "microsoft.com", "apple.com",
+  "facebook.com",
+  "instagram.com",
+  "twitter.com",
+  "x.com",
+  "google.com",
+  "youtube.com",
+  "linkedin.com",
+  "amazon.com",
+  "netflix.com",
+  "spotify.com",
+  "tiktok.com",
+  "reddit.com",
+  "github.com",
+  "microsoft.com",
+  "apple.com",
 ];
 
 const COUNTRY_KEYWORDS: Record<string, string> = {
-  mexico: "MX", "méxico": "MX", usa: "US", "united states": "US",
-  canada: "CA", brazil: "BR", brasil: "BR", uk: "GB",
-  "united kingdom": "GB", england: "GB", germany: "DE", deutschland: "DE",
-  france: "FR", spain: "ES", españa: "ES", italy: "IT", italia: "IT",
-  japan: "JP", china: "CN", india: "IN", australia: "AU",
-  argentina: "AR", colombia: "CO", chile: "CL", peru: "PE", perú: "PE",
+  mexico: "MX",
+  méxico: "MX",
+  usa: "US",
+  "united states": "US",
+  canada: "CA",
+  brazil: "BR",
+  brasil: "BR",
+  uk: "GB",
+  "united kingdom": "GB",
+  england: "GB",
+  germany: "DE",
+  deutschland: "DE",
+  france: "FR",
+  spain: "ES",
+  españa: "ES",
+  italy: "IT",
+  italia: "IT",
+  japan: "JP",
+  china: "CN",
+  india: "IN",
+  australia: "AU",
+  argentina: "AR",
+  colombia: "CO",
+  chile: "CL",
+  peru: "PE",
+  perú: "PE",
 };
 
 export async function estimateTask(
@@ -169,12 +200,32 @@ function fallbackEstimate(
 
   // Count steps
   const actionWords = [
-    "navigate", "go to", "visit", "open",
-    "click", "press", "submit", "tap",
-    "fill", "type", "enter", "input",
-    "screenshot", "scrape", "extract", "download",
-    "scroll", "wait", "select", "choose",
-    "create", "sign up", "signup", "register", "log in", "login",
+    "navigate",
+    "go to",
+    "visit",
+    "open",
+    "click",
+    "press",
+    "submit",
+    "tap",
+    "fill",
+    "type",
+    "enter",
+    "input",
+    "screenshot",
+    "scrape",
+    "extract",
+    "download",
+    "scroll",
+    "wait",
+    "select",
+    "choose",
+    "create",
+    "sign up",
+    "signup",
+    "register",
+    "log in",
+    "login",
   ];
 
   let steps = 2;
@@ -183,8 +234,7 @@ function fallbackEstimate(
   }
   steps = Math.min(steps, 15);
 
-  const complexity =
-    steps <= 3 ? "simple" : steps <= 7 ? "medium" : "complex";
+  const complexity = steps <= 3 ? "simple" : steps <= 7 ? "medium" : "complex";
 
   return {
     safe: true,

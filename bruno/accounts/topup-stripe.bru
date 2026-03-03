@@ -1,11 +1,11 @@
 meta {
-  name: Top Up Credits
+  name: Top Up (Stripe)
   type: http
-  seq: 2
+  seq: 3
 }
 
 post {
-  url: {{baseUrl}}/accounts/credits
+  url: {{baseUrl}}/accounts/credits/stripe
   body: json
   auth: bearer
 }

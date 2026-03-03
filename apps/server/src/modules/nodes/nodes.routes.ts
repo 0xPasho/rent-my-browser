@@ -4,9 +4,27 @@ import { auth } from "../../middleware/auth.js";
 import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
+import { createNodeOperator } from "./nodes.service.js";
 import { processHeartbeat, getNodeOffers } from "./nodes.service.js";
 
 const router: RouterType = Router();
+
+// --- Node registration (free) ---
+
+const createNodeSchema = z.object({
+  wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  node_type: z.enum(["headless", "real"]),
+});
+
+router.post(
+  "/nodes",
+  validate(createNodeSchema),
+  asyncHandler(async (req, res) => {
+    const { wallet_address, node_type } = req.body;
+    const result = await createNodeOperator(wallet_address, node_type);
+    res.status(201).json(result);
+  }),
+);
 
 // POST /nodes/:id/heartbeat — Register/update node capabilities
 const heartbeatSchema = z.object({

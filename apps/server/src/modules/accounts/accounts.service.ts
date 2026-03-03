@@ -1,15 +1,53 @@
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { accounts } from "../../db/schema/accounts.js";
-import { pendingPayments } from "../../db/schema/pending-payments.js";
-import { env } from "../../env.js";
+import { challenges } from "../../db/schema/challenges.js";
 import {
   ValidationError,
   NotFoundError,
   AuthError,
 } from "../../lib/errors.js";
-import { generatePaymentMemo } from "../auth/auth.lib.js";
+import {
+  generateApiKey,
+  hashApiKey,
+  generateChallenge,
+  verifyWalletSignature,
+  signDashboardJwt,
+} from "../auth/auth.lib.js";
 import { creditBalance, debitBalance } from "../ledger/ledger.service.js";
+import { and } from "drizzle-orm";
+
+// --- Registration ---
+
+export async function createConsumerAccount(walletAddress: string) {
+  const existing = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.walletAddress, walletAddress))
+    .limit(1);
+
+  if (existing.length > 0) {
+    throw new ValidationError("Account already exists for this wallet address");
+  }
+
+  const rawApiKey = generateApiKey("consumer");
+  const apiKeyHash = hashApiKey(rawApiKey);
+
+  const [account] = await db
+    .insert(accounts)
+    .values({ walletAddress, apiKeyHash, type: "consumer" })
+    .returning({ id: accounts.id });
+
+  const jwt = await signDashboardJwt(account.id);
+
+  return {
+    account_id: account.id,
+    api_key: rawApiKey,
+    dashboard_url: `https://app.rentmybrowser.com/session?token=${jwt}`,
+  };
+}
+
+// --- Account info ---
 
 export async function getAccount(accountId: string) {
   const [account] = await db
@@ -32,92 +70,15 @@ export async function getAccount(accountId: string) {
   return account;
 }
 
-export async function initiateTopup(accountId: string, amount: number) {
-  const [account] = await db
-    .select({ walletAddress: accounts.walletAddress })
-    .from(accounts)
-    .where(eq(accounts.id, accountId));
+// --- Credits ---
 
-  if (!account) {
-    throw new NotFoundError("Account not found");
-  }
-
-  const amountUsdc = (amount / 100).toFixed(2);
-  const memo = generatePaymentMemo("topup");
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-
-  await db.insert(pendingPayments).values({
-    walletAddress: account.walletAddress,
-    type: "topup",
-    amount,
-    amountUsdc,
-    memo,
-    expiresAt,
-  });
-
-  return {
-    chain: "base",
-    token: "USDC",
-    address: env.PLATFORM_WALLET_ADDRESS,
-    amount: amountUsdc,
-    memo,
-    expires_at: expiresAt.toISOString(),
-  };
-}
-
-export async function confirmTopup(accountId: string, txHash: string) {
-  const [account] = await db
-    .select({ walletAddress: accounts.walletAddress })
-    .from(accounts)
-    .where(eq(accounts.id, accountId));
-
-  if (!account) {
-    throw new NotFoundError("Account not found");
-  }
-
-  const [payment] = await db
-    .select()
-    .from(pendingPayments)
-    .where(
-      and(
-        eq(pendingPayments.walletAddress, account.walletAddress),
-        eq(pendingPayments.type, "topup"),
-        eq(pendingPayments.status, "pending"),
-      ),
-    )
-    .orderBy(pendingPayments.createdAt)
-    .limit(1);
-
-  if (!payment) {
-    throw new NotFoundError("No pending topup found");
-  }
-
-  if (new Date() > payment.expiresAt) {
-    await db
-      .update(pendingPayments)
-      .set({ status: "expired" })
-      .where(eq(pendingPayments.id, payment.id));
-    throw new ValidationError("Topup payment has expired");
-  }
-
-  // TODO: Verify USDC transfer onchain via Base RPC
-  // For v1, accept any tx_hash as valid
-
-  await db
-    .update(pendingPayments)
-    .set({
-      status: "confirmed",
-      txHash,
-      confirmedAt: new Date(),
-    })
-    .where(eq(pendingPayments.id, payment.id));
-
+export async function addCredits(accountId: string, amount: number) {
   await creditBalance(
     accountId,
-    payment.amount,
+    amount,
     "topup",
-    payment.id,
-    `Topup ${payment.amountUsdc} USDC`,
+    undefined,
+    `Topup ${amount} credits`,
   );
 
   const [updated] = await db
@@ -127,6 +88,8 @@ export async function confirmTopup(accountId: string, txHash: string) {
 
   return { balance: updated.balance };
 }
+
+// --- Withdrawals ---
 
 export async function requestWithdrawal(accountId: string, amount: number) {
   const [account] = await db
@@ -164,13 +127,97 @@ export async function requestWithdrawal(accountId: string, amount: number) {
     `Withdrawal ${(amount / 100).toFixed(2)} USDC`,
   );
 
-  // TODO: Send USDC to account.walletAddress onchain
-  // For v1, mark as pending manual review
-
   return {
     amount,
     usd: `$${(amount / 100).toFixed(2)}`,
     address: account.walletAddress,
     status: "pending_manual_review",
+  };
+}
+
+// --- Auth challenge/verify ---
+
+export async function createChallenge(walletAddress: string) {
+  const existing = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.walletAddress, walletAddress))
+    .limit(1);
+
+  if (existing.length === 0) {
+    throw new NotFoundError("No account found for this wallet address");
+  }
+
+  const message = generateChallenge(walletAddress);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+  await db.insert(challenges).values({ walletAddress, message, expiresAt });
+
+  return { message };
+}
+
+export async function verifyChallenge(
+  walletAddress: string,
+  signature: string,
+) {
+  const [challenge] = await db
+    .select()
+    .from(challenges)
+    .where(
+      and(
+        eq(challenges.walletAddress, walletAddress),
+        eq(challenges.used, false),
+      ),
+    )
+    .orderBy(challenges.createdAt)
+    .limit(1);
+
+  if (!challenge) {
+    throw new NotFoundError("No pending challenge found for this wallet");
+  }
+
+  if (new Date() > challenge.expiresAt) {
+    throw new ValidationError("Challenge has expired");
+  }
+
+  const isValid = await verifyWalletSignature(
+    challenge.message,
+    signature as `0x${string}`,
+    walletAddress as `0x${string}`,
+  );
+
+  if (!isValid) {
+    throw new AuthError("Invalid signature");
+  }
+
+  await db
+    .update(challenges)
+    .set({ used: true })
+    .where(eq(challenges.id, challenge.id));
+
+  const [account] = await db
+    .select({ id: accounts.id, type: accounts.type })
+    .from(accounts)
+    .where(eq(accounts.walletAddress, walletAddress))
+    .limit(1);
+
+  if (!account) {
+    throw new NotFoundError("Account not found");
+  }
+
+  const newApiKey = generateApiKey(account.type);
+  const apiKeyHash = hashApiKey(newApiKey);
+
+  await db
+    .update(accounts)
+    .set({ apiKeyHash, updatedAt: new Date() })
+    .where(eq(accounts.id, account.id));
+
+  const jwt = await signDashboardJwt(account.id);
+
+  return {
+    account_id: account.id,
+    api_key: newApiKey,
+    dashboard_url: `https://app.rentmybrowser.com/session?token=${jwt}`,
   };
 }

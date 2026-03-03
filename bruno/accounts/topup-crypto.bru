@@ -1,0 +1,15 @@
+meta {
+  name: Top Up Crypto (1000 credits / $10)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/accounts/credits/crypto/1000
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{apiKey}}
+}
