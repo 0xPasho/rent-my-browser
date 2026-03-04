@@ -17,7 +17,7 @@ const quickStart = [
   {
     step: "2",
     title: "top up credits",
-    code: `POST /accounts/credits/crypto/100\n→ 402 Payment Required (x402 USDC on Base)\n\n// or top up on the website`,
+    code: `POST /accounts/credits/stripe\n{ "amount": 10 }\n→ { "url": "https://checkout.stripe.com/..." }\n\n// or via x402: POST /accounts/credits/crypto/1000`,
   },
   {
     step: "3",
@@ -103,9 +103,21 @@ const endpointGroups: { title: string; endpoints: Endpoint[] }[] = [
     endpoints: [
       {
         method: "POST",
+        path: "/accounts/credits/stripe",
+        auth: "API key",
+        desc: "Create a Stripe Checkout session to purchase credits with a card. 1 credit = $0.01. Min $5, max $500.",
+        body: [
+          { name: "amount", type: "number", required: true, desc: "Dollar amount to charge ($5–$500)" },
+        ],
+        response: `{
+  "url": "https://checkout.stripe.com/c/pay/..."
+}`,
+      },
+      {
+        method: "POST",
         path: "/accounts/credits/crypto/:tier",
         auth: "API key",
-        desc: "Top up credits via x402 (USDC on Base). 1 credit = $0.01. Returns 402 with payment instructions.",
+        desc: "Top up credits via x402 (USDC on Base). 1 credit = $0.01. Returns 402 with payment instructions. Best for AI agents.",
         params: [
           { name: "tier", type: "number", required: true, desc: "Credit tier: 100 ($1), 500 ($5), 1000 ($10), 5000 ($50), or 20000 ($200)" },
         ],
@@ -130,6 +142,34 @@ const endpointGroups: { title: string; endpoints: Endpoint[] }[] = [
   {
     title: "Tasks (Consumer)",
     endpoints: [
+      {
+        method: "GET",
+        path: "/tasks",
+        auth: "API key",
+        desc: "List tasks for the authenticated account. Consumers see submitted tasks, operators see executed tasks.",
+        params: [
+          { name: "status", type: "string", desc: 'Filter by status: "queued", "running", "completed", "failed" (optional)' },
+          { name: "limit", type: "integer", desc: "Max results to return (default: 50, max: 100)" },
+          { name: "offset", type: "integer", desc: "Pagination offset (default: 0)" },
+        ],
+        response: `{
+  "tasks": [
+    {
+      "task_id": "uuid",
+      "goal": "Sign up on example.com",
+      "status": "completed",
+      "steps_completed": 5,
+      "estimated_steps": 5,
+      "estimated_cost": 50,
+      "actual_cost": 40,
+      "max_budget": 300,
+      "created_at": "2026-01-01T00:00:00Z",
+      "completed_at": "2026-01-01T00:00:12Z"
+    }
+  ],
+  "total": 42
+}`,
+      },
       {
         method: "POST",
         path: "/tasks",

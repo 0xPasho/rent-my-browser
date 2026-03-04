@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { tasks } from "../../db/schema/tasks.js";
 import { steps } from "../../db/schema/steps.js";
@@ -124,6 +124,79 @@ export async function createTask(accountId: string, input: CreateTaskInput) {
     },
     routing: estimate.routing,
     max_budget: input.max_budget,
+  };
+}
+
+export async function listTasks(
+  accountId: string,
+  accountType: "consumer" | "operator",
+  opts: { status?: string; limit?: number; offset?: number } = {},
+) {
+  const limit = Math.min(opts.limit ?? 50, 100);
+  const offset = opts.offset ?? 0;
+
+  let condition;
+  if (accountType === "consumer") {
+    condition = eq(tasks.accountId, accountId);
+  } else {
+    // Operator: find tasks assigned to their node(s)
+    const operatorNodes = await db
+      .select({ id: nodes.id })
+      .from(nodes)
+      .where(eq(nodes.accountId, accountId));
+    const nodeIds = operatorNodes.map((n) => n.id);
+    if (nodeIds.length === 0) {
+      return { tasks: [], total: 0 };
+    }
+    condition = inArray(tasks.nodeId, nodeIds);
+  }
+
+  const statusFilter = opts.status
+    ? and(condition, eq(tasks.status, opts.status as any))
+    : condition;
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(tasks)
+    .where(statusFilter!);
+
+  const rows = await db
+    .select({
+      id: tasks.id,
+      goal: tasks.goal,
+      status: tasks.status,
+      tier: tasks.tier,
+      mode: tasks.mode,
+      stepsCompleted: tasks.stepsCompleted,
+      estimatedSteps: tasks.estimatedSteps,
+      estimatedCost: tasks.estimatedCost,
+      actualCost: tasks.actualCost,
+      maxBudget: tasks.maxBudget,
+      createdAt: tasks.createdAt,
+      completedAt: tasks.completedAt,
+    })
+    .from(tasks)
+    .where(statusFilter!)
+    .orderBy(desc(tasks.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return {
+    tasks: rows.map((t) => ({
+      task_id: t.id,
+      goal: t.goal,
+      status: t.status,
+      tier: t.tier,
+      mode: t.mode,
+      steps_completed: t.stepsCompleted,
+      estimated_steps: t.estimatedSteps,
+      estimated_cost: t.estimatedCost,
+      actual_cost: t.actualCost,
+      max_budget: t.maxBudget,
+      created_at: t.createdAt,
+      completed_at: t.completedAt,
+    })),
+    total: count,
   };
 }
 

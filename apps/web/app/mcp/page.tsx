@@ -15,7 +15,9 @@ const tools = [
   { name: "auth_verify", rest: "POST /auth/verify", auth: "No", desc: "Submit signed challenge to recover API key. Step 2 of 2." },
   { name: "get_balance", rest: "GET /accounts/me", auth: "api_key", desc: "Check credit balance, total spent, total earned." },
   { name: "submit_task", rest: "POST /tasks", auth: "api_key", desc: "Submit a browser task for execution." },
+  { name: "list_tasks", rest: "GET /tasks", auth: "api_key", desc: "List tasks with optional status filter and pagination." },
   { name: "get_task", rest: "GET /tasks/:id", auth: "api_key", desc: "Poll task status and retrieve results." },
+  { name: "buy_credits", rest: "POST /accounts/credits/stripe", auth: "api_key", desc: "Create Stripe checkout session to buy credits with card." },
   { name: "add_test_credits", rest: "POST /accounts/credits/alternative", auth: "api_key", desc: "Add free credits (sandbox only)." },
 ];
 

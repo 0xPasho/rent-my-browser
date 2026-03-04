@@ -5,7 +5,7 @@
   "description": "Browser-as-a-service marketplace — rent idle OpenClaw node browsers for automated tasks",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter @rent-my-browser/server dev",
+    "dev:server": "pnpm --filter @rent-my-browser/server dev",
     "dev:web": "pnpm --filter @rent-my-browser/web dev",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck"

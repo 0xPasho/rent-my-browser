@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import pino from "pino";
 import pinoHttpModule from "pino-http";
 const pinoHttp = (pinoHttpModule as any).default || pinoHttpModule;
@@ -34,9 +33,31 @@ const authLimiter = rateLimit({
   message: { error: "RATE_LIMITED", message: "Too many requests, try again later" },
 });
 
-// Middleware
-app.use(cors());
+// CORS — manual handler for Express 5 compatibility
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (env.NODE_ENV === "production") {
+    if (origin === env.DASHBOARD_URL) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+  } else if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 app.use(pinoHttp({ logger, autoLogging: { ignore: (req: any) => req.url === "/health" } }));
+
+// Stripe webhook needs raw body — must be before express.json()
+app.use("/webhook/stripe", express.raw({ type: "application/json" }));
+
 app.use(express.json({ limit: "10mb" }));
 app.use("/uploads", express.static(env.UPLOAD_DIR));
 

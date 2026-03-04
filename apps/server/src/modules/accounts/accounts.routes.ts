@@ -3,6 +3,7 @@ import { z } from "zod";
 import { paymentMiddleware } from "@x402/express";
 import { env, BASE_CHAIN_ID, isSandbox } from "../../env.js";
 import { x402Server } from "../../lib/x402.js";
+import { stripe } from "../../lib/stripe.js";
 import { auth } from "../../middleware/auth.js";
 import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
@@ -182,18 +183,95 @@ router.post(
   }),
 );
 
-// --- Credit topup (stripe — stub) ---
+// --- Credit topup (Stripe Checkout) ---
+
+const stripeSchema = z.object({
+  amount: z
+    .number()
+    .positive("Amount must be positive")
+    .min(5, "Minimum top-up is $5")
+    .max(500, "Maximum top-up is $500"),
+});
 
 router.post(
   "/accounts/credits/stripe",
   auth,
   requireType("consumer"),
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      error: "NOT_IMPLEMENTED",
-      message:
-        "Stripe topup not yet available. Use /accounts/credits/crypto/:tier.",
+  validate(stripeSchema),
+  asyncHandler(async (req, res) => {
+    if (!stripe) {
+      res.status(501).json({
+        error: "NOT_CONFIGURED",
+        message: "Stripe is not configured on this server.",
+      });
+      return;
+    }
+
+    const amountDollars = req.body.amount;
+    const credits = Math.round(amountDollars * 100); // 1 credit = $0.01
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: Math.round(amountDollars * 100), // Stripe uses cents
+            product_data: {
+              name: `${credits.toLocaleString()} Credits`,
+              description: `rentmybrowser.ai — ${credits.toLocaleString()} credits ($${amountDollars.toFixed(2)})`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        account_id: req.account!.id,
+        credits: String(credits),
+      },
+      success_url: `${env.DASHBOARD_URL}/dashboard/top-up?success=true`,
+      cancel_url: `${env.DASHBOARD_URL}/dashboard/top-up?cancelled=true`,
     });
+
+    res.json({ url: session.url });
+  }),
+);
+
+// --- Stripe webhook ---
+
+router.post(
+  "/webhook/stripe",
+  asyncHandler(async (req, res) => {
+    if (!stripe || !env.STRIPE_WEBHOOK_SECRET) {
+      res.status(501).json({ error: "NOT_CONFIGURED" });
+      return;
+    }
+
+    const sig = req.headers["stripe-signature"] as string;
+    let event;
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body as Buffer,
+        sig,
+        env.STRIPE_WEBHOOK_SECRET,
+      );
+    } catch {
+      res.status(400).json({ error: "INVALID_SIGNATURE" });
+      return;
+    }
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      const accountId = session.metadata?.account_id;
+      const credits = Number(session.metadata?.credits);
+
+      if (accountId && credits > 0 && session.payment_status === "paid") {
+        await addCredits(accountId, credits);
+      }
+    }
+
+    res.json({ received: true });
   }),
 );
 

@@ -4,7 +4,7 @@ import { auth } from "../../middleware/auth.js";
 import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
-import { createTask, getTask, recordStep, submitResult } from "./tasks.service.js";
+import { createTask, listTasks, getTask, recordStep, submitResult } from "./tasks.service.js";
 
 const router: RouterType = Router();
 
@@ -34,6 +34,24 @@ router.post(
   asyncHandler(async (req, res) => {
     const result = await createTask(req.account!.id, req.body);
     res.status(202).json(result);
+  }),
+);
+
+// GET /tasks — List tasks for the authenticated account
+router.get(
+  "/tasks",
+  auth,
+  asyncHandler(async (req, res) => {
+    const result = await listTasks(
+      req.account!.id,
+      req.account!.type as "consumer" | "operator",
+      {
+        status: req.query.status as string | undefined,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+        offset: req.query.offset ? Number(req.query.offset) : undefined,
+      },
+    );
+    res.json(result);
   }),
 );
 

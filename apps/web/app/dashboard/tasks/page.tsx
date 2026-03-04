@@ -5,14 +5,14 @@ import { useEffect, useState } from "react";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 interface Task {
-  id: string;
+  task_id: string;
   goal: string;
   status: string;
-  actualCost: number | null;
-  estimatedCost: number | null;
-  stepsCompleted: number;
-  estimatedSteps: number | null;
-  createdAt: string;
+  actual_cost: number | null;
+  estimated_cost: number | null;
+  steps_completed: number;
+  estimated_steps: number | null;
+  created_at: string;
 }
 
 function getToken() {
@@ -35,9 +35,18 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Add a /tasks (list) endpoint on the server for dashboard use
-    // For now, show empty state
-    setLoading(false);
+    const token = getToken();
+    if (!token) return;
+
+    fetch(`${API_URL}/tasks`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setTasks(data.tasks ?? []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   return (
@@ -94,7 +103,7 @@ export default function TasksPage() {
             <tbody>
               {tasks.map((task) => (
                 <tr
-                  key={task.id}
+                  key={task.task_id}
                   className="border-b border-border/50 last:border-0"
                 >
                   <td className="max-w-xs truncate px-4 py-3 text-xs text-foreground">
@@ -110,14 +119,14 @@ export default function TasksPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {task.stepsCompleted}
-                    {task.estimatedSteps ? `/${task.estimatedSteps}` : ""}
+                    {task.steps_completed}
+                    {task.estimated_steps ? `/${task.estimated_steps}` : ""}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {task.actualCost ?? task.estimatedCost ?? "—"}
+                    {task.actual_cost ?? task.estimated_cost ?? "—"}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {new Date(task.createdAt).toLocaleDateString()}
+                    {new Date(task.created_at).toLocaleDateString()}
                   </td>
                 </tr>
               ))}
