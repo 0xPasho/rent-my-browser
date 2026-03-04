@@ -225,14 +225,19 @@ export async function getTask(taskId: string, accountId: string) {
     throw new NotFoundError("Task not found");
   }
 
-  // Consumer can see their own tasks, operator can see tasks claimed by their node
+  // Consumer can see their own tasks, operator can see tasks assigned to their node
   if (task.accountId !== accountId) {
-    const [account] = await db
-      .select({ type: accounts.type })
-      .from(accounts)
-      .where(eq(accounts.id, accountId));
+    if (!task.nodeId) {
+      throw new AuthError("Not authorized to view this task");
+    }
+    // Verify the task's node belongs to the requesting account
+    const [node] = await db
+      .select({ id: nodes.id })
+      .from(nodes)
+      .where(and(eq(nodes.id, task.nodeId), eq(nodes.accountId, accountId)))
+      .limit(1);
 
-    if (!account || account.type !== "operator" || !task.nodeId) {
+    if (!node) {
       throw new AuthError("Not authorized to view this task");
     }
   }
@@ -325,28 +330,29 @@ export async function recordStep(
     );
   }
 
-  // Upload screenshot if provided
+  // Upload screenshot if provided (outside transaction — file I/O)
   let screenshotUrl: string | undefined;
   if (input.screenshot) {
     screenshotUrl = await uploadScreenshot(taskId, input.step, input.screenshot);
   }
 
-  // Insert step
-  await db.insert(steps).values({
-    taskId,
-    stepNumber: input.step,
-    action: input.action,
-    screenshotUrl,
-  });
+  // Insert step + update task atomically
+  await db.transaction(async (tx) => {
+    await tx.insert(steps).values({
+      taskId,
+      stepNumber: input.step,
+      action: input.action,
+      screenshotUrl,
+    });
 
-  // Update task step count and status
-  await db
-    .update(tasks)
-    .set({
-      stepsCompleted: input.step,
-      status: "running",
-    })
-    .where(eq(tasks.id, taskId));
+    await tx
+      .update(tasks)
+      .set({
+        stepsCompleted: input.step,
+        status: "running",
+      })
+      .where(eq(tasks.id, taskId));
+  });
 
   return {
     step: input.step,

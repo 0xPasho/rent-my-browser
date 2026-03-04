@@ -1,12 +1,22 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { env } from "../../env.js";
 
 // v1: local disk storage. Swap to S3/R2 later.
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
+}
+
+function safePath(base: string, ...segments: string[]): string {
+  const resolved = resolve(base, ...segments);
+  if (!resolved.startsWith(resolve(base))) {
+    throw new Error("Path traversal detected");
+  }
+  return resolved;
 }
 
 export async function uploadScreenshot(
@@ -14,7 +24,14 @@ export async function uploadScreenshot(
   stepNumber: number,
   data: Buffer | string,
 ): Promise<string> {
-  const dir = join(env.UPLOAD_DIR, taskId);
+  if (!UUID_RE.test(taskId)) {
+    throw new Error("Invalid task ID format");
+  }
+  if (!Number.isInteger(stepNumber) || stepNumber < 1 || stepNumber > 10000) {
+    throw new Error("Invalid step number");
+  }
+
+  const dir = safePath(env.UPLOAD_DIR, taskId);
   ensureDir(dir);
 
   const filename = `step_${stepNumber}.png`;
@@ -35,11 +52,17 @@ export async function uploadFile(
   originalName: string,
   data: Buffer,
 ): Promise<{ name: string; url: string }> {
-  const dir = join(env.UPLOAD_DIR, taskId, "files");
+  if (!UUID_RE.test(taskId)) {
+    throw new Error("Invalid task ID format");
+  }
+
+  const dir = safePath(env.UPLOAD_DIR, taskId, "files");
   ensureDir(dir);
 
-  const ext = originalName.includes(".")
-    ? originalName.slice(originalName.lastIndexOf("."))
+  // Only allow safe extensions, strip any path components from originalName
+  const baseName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const ext = baseName.includes(".")
+    ? baseName.slice(baseName.lastIndexOf("."))
     : "";
   const filename = `${randomUUID()}${ext}`;
   const filepath = join(dir, filename);

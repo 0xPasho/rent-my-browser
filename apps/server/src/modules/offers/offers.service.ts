@@ -67,6 +67,17 @@ export async function claimOffer(
         and(eq(offers.taskId, offer.taskId), eq(offers.status, "pending")),
       );
 
+    // Lock and verify the task row to prevent race with other offer claims
+    const [task] = await tx
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, offer.taskId))
+      .for("update");
+
+    if (!task || !["queued", "offered"].includes(task.status as string)) {
+      throw new ConflictError("Task is no longer available");
+    }
+
     // Assign node to task and update status
     await tx
       .update(tasks)
@@ -75,12 +86,6 @@ export async function claimOffer(
         status: "claimed",
         startedAt: new Date(),
       })
-      .where(eq(tasks.id, offer.taskId));
-
-    // Get the full task payload to return to the node
-    const [task] = await tx
-      .select()
-      .from(tasks)
       .where(eq(tasks.id, offer.taskId));
 
     return {
