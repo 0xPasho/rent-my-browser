@@ -132,6 +132,10 @@ export const tasks = pgTable(
     stepsCompleted: integer("steps_completed").notNull().default(0),
     actualCost: integer("actual_cost"),
     result: jsonb("result"),
+    settings: jsonb("settings").$type<{
+      timeout_ms: number;
+      allow_downgrade: boolean;
+    }>(),
     durationMs: integer("duration_ms"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),

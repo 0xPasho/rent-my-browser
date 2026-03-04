@@ -17,6 +17,9 @@ import { calculateEstimatedCost, calculateActualCost, getPricePerStep } from "./
 import { sanitizeValue } from "../../lib/sanitize.js";
 import { updateNodeScore } from "../nodes/nodes.service.js";
 
+const DEFAULT_TIMEOUT_MS = 300_000;
+const DEFAULT_ALLOW_DOWNGRADE = true;
+
 interface CreateTaskInput {
   goal: string;
   context?: {
@@ -24,6 +27,10 @@ interface CreateTaskInput {
     tier?: "headless" | "real" | "auto";
     mode?: "simple" | "adversarial";
     geo?: string;
+  };
+  settings?: {
+    timeout_ms?: number;
+    allow_downgrade?: boolean;
   };
   max_budget: number;
 }
@@ -89,6 +96,12 @@ export async function createTask(accountId: string, input: CreateTaskInput) {
     routing: estimate.routing,
   };
 
+  // Resolve settings with defaults
+  const resolvedSettings = {
+    timeout_ms: input.settings?.timeout_ms ?? DEFAULT_TIMEOUT_MS,
+    allow_downgrade: input.settings?.allow_downgrade ?? DEFAULT_ALLOW_DOWNGRADE,
+  };
+
   // Hold max budget and create task
   const [task] = await db
     .insert(tasks)
@@ -96,6 +109,7 @@ export async function createTask(accountId: string, input: CreateTaskInput) {
       accountId,
       goal: input.goal,
       context: contextWithRouting,
+      settings: resolvedSettings,
       status: "queued",
       tier,
       mode,
@@ -124,6 +138,7 @@ export async function createTask(accountId: string, input: CreateTaskInput) {
     },
     routing: estimate.routing,
     max_budget: input.max_budget,
+    settings: resolvedSettings,
   };
 }
 
@@ -289,6 +304,14 @@ export async function recordStep(
 
   if (!node) throw new AuthError("No node found for this account");
   verifyNodeOwnsTask(task, node.id);
+
+  // Validate sequential step number
+  const expectedStep = task.stepsCompleted + 1;
+  if (input.step !== expectedStep) {
+    throw new ValidationError(
+      `Expected step ${expectedStep}, got ${input.step}`,
+    );
+  }
 
   // Check budget cap
   const pricePerStep = getPricePerStep(

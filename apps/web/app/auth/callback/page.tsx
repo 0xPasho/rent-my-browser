@@ -16,7 +16,7 @@ function CallbackContent() {
       return;
     }
 
-    document.cookie = `rmb_session=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax`;
+    document.cookie = `rmb_session=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax; secure`;
     router.push("/dashboard");
   }, [searchParams, router]);
 

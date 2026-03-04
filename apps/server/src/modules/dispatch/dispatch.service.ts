@@ -3,7 +3,7 @@ import { db } from "../../db/index.js";
 import { tasks } from "../../db/schema/tasks.js";
 import { nodes } from "../../db/schema/nodes.js";
 import { offers } from "../../db/schema/offers.js";
-import { getPricePerStep } from "../tasks/tasks.lib.js";
+import { getPricePerStep, calculateEstimatedCost } from "../tasks/tasks.lib.js";
 import { releaseBudget } from "../ledger/ledger.service.js";
 
 const OFFER_TTL_MS = 15_000; // 15 seconds
@@ -235,6 +235,47 @@ export async function broadcastOffers(
   return selectedNodes.length;
 }
 
+async function downgradeTask(taskId: string): Promise<boolean> {
+  const [task] = await db
+    .select({
+      tier: tasks.tier,
+      settings: tasks.settings,
+      estimatedSteps: tasks.estimatedSteps,
+    })
+    .from(tasks)
+    .where(eq(tasks.id, taskId));
+
+  if (!task) return false;
+
+  const settings = task.settings as { allow_downgrade: boolean } | null;
+  const allowDowngrade = settings?.allow_downgrade ?? true;
+
+  // Can only downgrade real → headless
+  if (!allowDowngrade || task.tier !== "real") return false;
+
+  const newEstimatedCost = calculateEstimatedCost(
+    "headless",
+    "simple",
+    task.estimatedSteps ?? 0,
+  );
+
+  await db
+    .update(tasks)
+    .set({
+      tier: "headless",
+      mode: "simple",
+      estimatedCost: newEstimatedCost,
+      status: "queued",
+    })
+    .where(eq(tasks.id, taskId));
+
+  console.log(
+    `Dispatch: task ${taskId} — downgraded from real to headless (mode: simple)`,
+  );
+
+  return true;
+}
+
 export async function rebroadcastExpiredOffers(): Promise<void> {
   // Find tasks that have all offers expired and haven't been claimed
   const expiredTasks = await db
@@ -273,9 +314,18 @@ export async function rebroadcastExpiredOffers(): Promise<void> {
     const excludeNodeIds = allOffers.map((o) => o.nodeId);
 
     if (round > MAX_ROUTING_ROUNDS) {
-      // Max rounds exceeded — fail the task and release budget
+      // Try downgrading tier before failing
+      const downgraded = await downgradeTask(taskId);
+
+      if (downgraded) {
+        // Fresh rounds with the new tier, no exclusions
+        await broadcastOffers(taskId, 1, []);
+        continue;
+      }
+
+      // No downgrade possible — fail the task and release budget
       console.log(
-        `Dispatch: task ${taskId} — max rounds exceeded, failing task`,
+        `Dispatch: task ${taskId} — max rounds exceeded, no downgrade available, failing task`,
       );
 
       const [task] = await db

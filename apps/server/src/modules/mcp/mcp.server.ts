@@ -212,6 +212,21 @@ export function createMcpServer(): McpServer {
         .describe(
           "Maximum credits to spend. You are charged for actual steps executed, never more than this. Pricing: headless 5 credits/step, real 10/step, adversarial 15/step.",
         ),
+      timeout_ms: z
+        .number()
+        .int()
+        .min(30_000)
+        .max(600_000)
+        .default(300_000)
+        .describe(
+          "How long (ms) before the task auto-fails if no node claims it. Default: 300000 (5 min). Min: 30s, Max: 10min.",
+        ),
+      allow_downgrade: z
+        .boolean()
+        .default(true)
+        .describe(
+          "If true and no real-browser nodes are available, the platform will try headless nodes as a fallback. Default: true.",
+        ),
     },
     async (params) => {
       const accountId = await resolveAccountId(params.api_key);
@@ -222,6 +237,10 @@ export function createMcpServer(): McpServer {
           tier: params.tier,
           mode: params.mode,
           geo: params.geo,
+        },
+        settings: {
+          timeout_ms: params.timeout_ms,
+          allow_downgrade: params.allow_downgrade,
         },
         max_budget: params.max_budget,
       });

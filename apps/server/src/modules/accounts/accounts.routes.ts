@@ -1,5 +1,6 @@
 import { Router, type Router as RouterType } from "express";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 import { paymentMiddleware } from "@x402/express";
 import { env, BASE_CHAIN_ID, isSandbox } from "../../env.js";
 import { x402Server } from "../../lib/x402.js";
@@ -79,12 +80,21 @@ router.post(
 
 // --- Email magic link ---
 
+const emailLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "RATE_LIMITED", message: "Too many magic link requests, try again later" },
+});
+
 const emailSchema = z.object({
   email: z.string().email(),
 });
 
 router.post(
   "/auth/email/send",
+  emailLimiter,
   validate(emailSchema),
   asyncHandler(async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
@@ -267,7 +277,7 @@ router.post(
       const credits = Number(session.metadata?.credits);
 
       if (accountId && credits > 0 && session.payment_status === "paid") {
-        await addCredits(accountId, credits);
+        await addCredits(accountId, credits, session.id);
       }
     }
 

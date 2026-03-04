@@ -19,6 +19,12 @@ const createTaskSchema = z.object({
       geo: z.string().optional(),
     })
     .optional(),
+  settings: z
+    .object({
+      timeout_ms: z.number().int().min(30_000, "Timeout must be at least 30 seconds").max(600_000, "Timeout cannot exceed 10 minutes").default(300_000),
+      allow_downgrade: z.boolean().default(true),
+    })
+    .optional(),
   max_budget: z
     .number()
     .int()
@@ -69,7 +75,7 @@ router.get(
 const stepSchema = z.object({
   step: z.number().int().positive(),
   action: z.string().min(1).max(500),
-  screenshot: z.string().optional(), // base64
+  screenshot: z.string().max(7_000_000, "Screenshot must be under 5MB").optional(), // base64 ~5MB
 });
 
 router.post(

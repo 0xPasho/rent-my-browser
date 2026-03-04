@@ -98,7 +98,7 @@ function WalletLogin() {
       const url = new URL(result.dashboard_url);
       const token = url.searchParams.get("token");
       if (token) {
-        document.cookie = `rmb_session=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax`;
+        document.cookie = `rmb_session=${token}; path=/; max-age=${60 * 60 * 24}; samesite=lax; secure`;
       }
 
       router.push("/dashboard");

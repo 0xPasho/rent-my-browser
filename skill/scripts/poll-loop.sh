@@ -128,9 +128,27 @@ while $running; do
       # Write task payload for the agent (atomic write)
       local_task="$(echo "$HTTP_BODY" | jq --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '. + {"claimed_at": $ts}')"
       echo "$local_task" > "$TASK_FILE.tmp"
+
+      # ── Validate task before agent sees it ─────────────────────────────
+      rejection="$(node "$SCRIPT_DIR/validate-task.mjs" "$TASK_FILE.tmp" 2>/dev/null)"
+      if [ $? -ne 0 ] && [ -n "$rejection" ]; then
+        rmb_log WARN "Task $task_id rejected by validator: $rejection"
+        # Report as failed safety rejection
+        fail_body="$(jq -n --arg reason "$rejection" '{"status":"failed","extracted_data":{"reason":"safety_rejection","details":$reason}}')"
+        rmb_http POST "/tasks/$task_id/result" "$fail_body" || true
+        rm -f "$TASK_FILE.tmp"
+        rmb_update_stats "tasks_failed" 1
+        rmb_set_stat "last_task_at" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        sleep "$POLL_INTERVAL"
+        continue
+      fi
+      rm -f "$TASK_FILE.tmp"
+
+      # Validation passed — write for the agent
+      echo "$local_task" > "$TASK_FILE.tmp"
       mv "$TASK_FILE.tmp" "$TASK_FILE"
 
-      rmb_log INFO "Task written to $TASK_FILE — waiting for agent to execute..."
+      rmb_log INFO "Task validated and written to $TASK_FILE — waiting for agent to execute..."
 
       # Wait for the agent to complete the task (deletes the file via report-result.sh)
       while $running && [ -f "$TASK_FILE" ]; do

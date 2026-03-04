@@ -16,13 +16,27 @@ export async function createNodeOperator(
   walletAddress: string,
   nodeType: "headless" | "real",
 ) {
-  const existing = await db
+  // Check if wallet already has an account
+  const existingAccount = await db
     .select({ id: accounts.id })
     .from(accounts)
     .where(eq(accounts.walletAddress, walletAddress))
     .limit(1);
 
-  if (existing.length > 0) {
+  if (existingAccount.length > 0) {
+    // Check if that account already has a node
+    const existingNode = await db
+      .select({ id: nodes.id })
+      .from(nodes)
+      .where(eq(nodes.accountId, existingAccount[0].id))
+      .limit(1);
+
+    if (existingNode.length > 0) {
+      throw new ValidationError(
+        "A node already exists for this wallet. Use your existing credentials or re-register with /auth/challenge + /auth/verify.",
+      );
+    }
+
     throw new ValidationError("Account already exists for this wallet address");
   }
 

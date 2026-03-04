@@ -25,7 +25,8 @@ writeFileSync(
     { privateKey, address: account.address, createdAt: new Date().toISOString() },
     null,
     2
-  )
+  ),
+  { mode: 0o600 },
 );
 
 process.stdout.write(account.address);

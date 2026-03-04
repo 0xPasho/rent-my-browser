@@ -4,6 +4,7 @@ import { db } from "../../db/index.js";
 import { accounts } from "../../db/schema/accounts.js";
 import { challenges } from "../../db/schema/challenges.js";
 import { emailChallenges } from "../../db/schema/email-challenges.js";
+import { ledgerEntries } from "../../db/schema/ledger.js";
 import {
   ValidationError,
   NotFoundError,
@@ -76,12 +77,34 @@ export async function getAccount(accountId: string) {
 
 // --- Credits ---
 
-export async function addCredits(accountId: string, amount: number) {
+export async function addCredits(accountId: string, amount: number, referenceId?: string) {
+  // Idempotency: skip if this referenceId was already processed
+  if (referenceId) {
+    const [existing] = await db
+      .select({ id: ledgerEntries.id })
+      .from(ledgerEntries)
+      .where(
+        and(
+          eq(ledgerEntries.referenceId, referenceId),
+          eq(ledgerEntries.category, "topup"),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      const [account] = await db
+        .select({ balance: accounts.balance })
+        .from(accounts)
+        .where(eq(accounts.id, accountId));
+      return { balance: account.balance };
+    }
+  }
+
   await creditBalance(
     accountId,
     amount,
     "topup",
-    undefined,
+    referenceId,
     `Topup ${amount} credits`,
   );
 
