@@ -1,4 +1,4 @@
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and, lt, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { accounts } from "../../db/schema/accounts.js";
 import { nodes } from "../../db/schema/nodes.js";
@@ -226,6 +226,73 @@ export async function updateNodeScore(
     .update(nodes)
     .set({ score: newScore })
     .where(eq(nodes.id, nodeId));
+}
+
+// --- Public network stats (cached) ---
+
+interface NetworkStats {
+  online_nodes: number;
+  countries: string[];
+  locations: { country: string; city: string; lng: number; lat: number; nodes: number }[];
+}
+
+let statsCache: { data: NetworkStats; expiresAt: number } | null = null;
+const STATS_CACHE_TTL = 60_000; // 60 seconds
+
+export async function getNetworkStats(): Promise<NetworkStats> {
+  if (statsCache && Date.now() < statsCache.expiresAt) {
+    return statsCache.data;
+  }
+
+  // Count online nodes
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(nodes)
+    .where(eq(nodes.isOnline, true));
+
+  // Group by country/city for location data
+  const rows = await db
+    .select({
+      geo: nodes.geo,
+    })
+    .from(nodes)
+    .where(eq(nodes.isOnline, true));
+
+  // Aggregate by country+city
+  const locationMap = new Map<string, { country: string; city: string; nodes: number }>();
+  const countrySet = new Set<string>();
+
+  for (const row of rows) {
+    const geo = row.geo as { country?: string; city?: string } | null;
+    if (!geo?.country) continue;
+
+    countrySet.add(geo.country);
+    const city = geo.city || "Unknown";
+    const key = `${geo.country}:${city}`;
+    const existing = locationMap.get(key);
+    if (existing) {
+      existing.nodes += 1;
+    } else {
+      locationMap.set(key, { country: geo.country, city, nodes: 1 });
+    }
+  }
+
+  // We don't store lat/lng in the DB, so locations are returned without coordinates.
+  // The frontend will only use country + city + node count for new real nodes.
+  const locations = Array.from(locationMap.values()).map((loc) => ({
+    ...loc,
+    lng: 0,
+    lat: 0,
+  }));
+
+  const data: NetworkStats = {
+    online_nodes: count,
+    countries: Array.from(countrySet),
+    locations,
+  };
+
+  statsCache = { data, expiresAt: Date.now() + STATS_CACHE_TTL };
+  return data;
 }
 
 export async function markStaleNodesOffline(): Promise<number> {

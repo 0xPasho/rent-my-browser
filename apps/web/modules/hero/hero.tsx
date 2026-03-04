@@ -1,19 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Terminal } from "./terminal";
+import { LiveCounter } from "./live-counter";
 
 export function Hero() {
   return (
     <section className="px-6 pb-16 pt-32">
       <div className="mx-auto max-w-6xl">
-        {/* Live counter */}
-        <div className="mb-8 flex items-center justify-center gap-3">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-          <span className="font-mono text-sm tracking-wide text-muted-foreground">
-            <span className="font-bold text-foreground">147</span> real browsers
-            online across{" "}
-            <span className="font-bold text-foreground">11</span> countries
-          </span>
-        </div>
+        <LiveCounter />
 
         {/* Single row: Headline + Terminal */}
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
@@ -49,7 +42,7 @@ export function Hero() {
             </div>
 
             <p className="mt-5 text-sm text-muted-foreground lg:text-left text-center">
-              want to connect your OpenClaw?{" "}
+              want to connect your OpenClaw and earn?{" "}
               <a
                 href="/browser-node-setup"
                 className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"

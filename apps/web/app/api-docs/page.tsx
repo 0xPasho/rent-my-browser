@@ -117,11 +117,13 @@ const endpointGroups: { title: string; endpoints: Endpoint[] }[] = [
         method: "POST",
         path: "/accounts/credits/crypto/:tier",
         auth: "API key",
-        desc: "Top up credits via x402 (USDC on Base). 1 credit = $0.01. Returns 402 with payment instructions. Best for AI agents.",
+        desc: "Top up credits via x402 (USDC on Base). Only fixed tiers are available — no custom amounts. Returns 402 with payment instructions that your x402-compatible client handles automatically. Best for AI agents.",
         params: [
-          { name: "tier", type: "number", required: true, desc: "Credit tier: 100 ($1), 500 ($5), 1000 ($10), 5000 ($50), or 20000 ($200)" },
+          { name: "tier", type: "string", required: true, desc: 'One of: "100" ($1), "500" ($5), "1000" ($10), "5000" ($50), "20000" ($200). Only these exact values are accepted.' },
         ],
-        response: `{
+        response: `// First request returns 402 with x402 payment instructions.
+// After payment, returns:
+{
   "balance": 1100
 }`,
       },
@@ -148,7 +150,7 @@ const endpointGroups: { title: string; endpoints: Endpoint[] }[] = [
         auth: "API key",
         desc: "List tasks for the authenticated account. Consumers see submitted tasks, operators see executed tasks.",
         params: [
-          { name: "status", type: "string", desc: 'Filter by status: "queued", "running", "completed", "failed" (optional)' },
+          { name: "status", type: "string", desc: 'Filter by status: "queued", "offered", "claimed", "running", "completed", "failed" (optional)' },
           { name: "limit", type: "integer", desc: "Max results to return (default: 50, max: 100)" },
           { name: "offset", type: "integer", desc: "Pagination offset (default: 0)" },
         ],
@@ -182,16 +184,24 @@ const endpointGroups: { title: string; endpoints: Endpoint[] }[] = [
           { name: "context.mode", type: "string", desc: '"simple" | "adversarial" (default: "simple")' },
           { name: "context.geo", type: "string", desc: "Country code for geo-targeting (optional)" },
           { name: "max_budget", type: "integer", required: true, desc: "Maximum credits to spend (1-10000). 1 credit = $0.01" },
+          { name: "settings.timeout_ms", type: "integer", desc: "Auto-fail timeout in ms if no node claims the task. Range: 30000-600000. Default: 300000 (5 min)" },
+          { name: "settings.allow_downgrade", type: "boolean", desc: 'If true and tier is "real" but no real nodes available, falls back to headless. Default: true' },
         ],
         response: `{
   "task_id": "uuid",
   "status": "queued",
   "estimate": {
     "tier": "real",
+    "mode": "simple",
+    "complexity": "moderate",
     "estimated_steps": 5,
     "estimated_cost": 100
   },
-  "max_budget": 200
+  "max_budget": 200,
+  "settings": {
+    "timeout_ms": 300000,
+    "allow_downgrade": true
+  }
 }`,
       },
       {

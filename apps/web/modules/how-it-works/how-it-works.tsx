@@ -1,4 +1,4 @@
-import { Globe } from "@/modules/hero/globe";
+import { GlobeWithStats } from "@/modules/hero/globe-with-stats";
 import { Button } from "@/components/ui/button";
 
 const useCases = [
@@ -103,7 +103,7 @@ export function HowItWorks() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div className="mx-auto w-full max-w-lg lg:max-w-none">
-              <Globe />
+              <GlobeWithStats />
             </div>
 
             <div className="text-center lg:text-left">

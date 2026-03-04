@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import type { NodeLocation } from "./use-network-stats";
 
-// Node locations: [lng, lat, city, nodes]
-const NODE_LOCATIONS = [
+const DEFAULT_LOCATIONS: NodeLocation[] = [
   { lng: -122.42, lat: 37.77, city: "San Francisco", nodes: 23 },
   { lng: -73.94, lat: 40.73, city: "New York", nodes: 31 },
   { lng: -43.17, lat: -22.91, city: "Sao Paulo", nodes: 8 },
@@ -20,16 +20,21 @@ const NODE_LOCATIONS = [
   { lng: -79.38, lat: 43.65, city: "Toronto", nodes: 4 },
 ];
 
-const NODE_COUNTRIES = [
-  "US", "DE", "BR", "JP", "AU", "IN", "FR", "GB", "KR", "SG",
-  "CA",
+const DEFAULT_COUNTRIES = [
+  "US", "DE", "BR", "JP", "AU", "IN", "FR", "GB", "KR", "SG", "CA",
 ];
 
-const TOTAL_NODES = NODE_LOCATIONS.reduce((sum, n) => sum + n.nodes, 0);
 const ROTATION_SPEED = 0.015;
 const RESUME_DELAY = 3000; // resume auto-rotate 3s after user stops dragging
 
-export function Globe() {
+interface GlobeProps {
+  countries?: string[];
+  locations?: NodeLocation[];
+}
+
+export function Globe({ countries, locations }: GlobeProps = {}) {
+  const nodeCountries = countries ?? DEFAULT_COUNTRIES;
+  const nodeLocations = locations ?? DEFAULT_LOCATIONS;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const frameRef = useRef<number>(0);
@@ -85,7 +90,7 @@ export function Globe() {
           filter: [
             "in",
             ["get", "iso_3166_1"],
-            ["literal", NODE_COUNTRIES],
+            ["literal", nodeCountries],
           ],
           paint: {
             "fill-color": "#10b981",
@@ -104,7 +109,7 @@ export function Globe() {
           filter: [
             "in",
             ["get", "iso_3166_1"],
-            ["literal", NODE_COUNTRIES],
+            ["literal", nodeCountries],
           ],
           paint: {
             "line-color": "#10b981",
@@ -120,7 +125,7 @@ export function Globe() {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: NODE_LOCATIONS.map((loc) => ({
+          features: nodeLocations.map((loc) => ({
             type: "Feature" as const,
             geometry: {
               type: "Point" as const,
