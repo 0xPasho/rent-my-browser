@@ -13,6 +13,7 @@ const envSchema = z.object({
     .default("0x0000000000000000000000000000000000000000"),
   X402_FACILITATOR_URL: z.string().default("https://www.x402.org/facilitator"),
   UPLOAD_DIR: z.string().default("/tmp/rmb-uploads"),
+  DASHBOARD_URL: z.string().default("http://localhost:3001"),
 });
 
 export const env = envSchema.parse(process.env);

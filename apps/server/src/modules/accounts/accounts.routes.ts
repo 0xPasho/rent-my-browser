@@ -14,6 +14,10 @@ import {
   requestWithdrawal,
   createChallenge,
   verifyChallenge,
+  sendEmailMagicLink,
+  verifyEmailToken,
+  getSession,
+  updateAccountEmail,
 } from "./accounts.service.js";
 
 const router: RouterType = Router();
@@ -68,6 +72,68 @@ router.post(
   asyncHandler(async (req, res) => {
     const { wallet_address, signature } = req.body;
     const result = await verifyChallenge(wallet_address, signature);
+    res.json(result);
+  }),
+);
+
+// --- Email magic link ---
+
+const emailSchema = z.object({
+  email: z.string().email(),
+});
+
+router.post(
+  "/auth/email/send",
+  validate(emailSchema),
+  asyncHandler(async (req, res) => {
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const result = await sendEmailMagicLink(req.body.email, baseUrl);
+    res.json(result);
+  }),
+);
+
+router.get(
+  "/auth/email/verify",
+  asyncHandler(async (req, res) => {
+    const token = req.query.token as string;
+    if (!token) {
+      res.status(400).json({ error: "MISSING_TOKEN", message: "Token is required" });
+      return;
+    }
+    const result = await verifyEmailToken(token);
+    // Redirect to frontend with JWT
+    res.redirect(`${env.DASHBOARD_URL ?? "http://localhost:3001"}/auth/callback?token=${result.token}`);
+  }),
+);
+
+// --- Session (JWT-based, no API key needed) ---
+
+router.get(
+  "/auth/session",
+  asyncHandler(async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "UNAUTHORIZED", message: "Missing token" });
+      return;
+    }
+    const token = authHeader.slice(7);
+    const account = await getSession(token);
+    res.json(account);
+  }),
+);
+
+// --- Update account email ---
+
+const updateEmailSchema = z.object({
+  email: z.string().email(),
+});
+
+router.patch(
+  "/accounts/me",
+  auth,
+  validate(updateEmailSchema),
+  asyncHandler(async (req, res) => {
+    const result = await updateAccountEmail(req.account!.id, req.body.email);
     res.json(result);
   }),
 );

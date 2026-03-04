@@ -41,13 +41,12 @@ Real machine nodes avoid bot detection by:
 
 ## Node Onboarding
 
-Operators register with a wallet address, pay $1 USDC to verify, get an API key:
+Operators register with a wallet address for free:
 
 ```
 POST /nodes
 { "wallet_address": "0x...", "node_type": "real" }
-→ 402 → pay $1 USDC
-→ { "api_key": "rmb_n_...", "node_id": "uuid" }
+→ 201 { "account_id", "node_id", "api_key": "rmb_n_...", "dashboard_url" }
 ```
 
 Set `RMB_API_KEY` in OpenClaw skill env vars. The node starts participating
@@ -116,12 +115,11 @@ no background daemon:
 ```
 1. POST /nodes/:id/heartbeat     → register/update capabilities
 2. GET  /nodes/:id/offers        → check for pending offers
-3. POST /offers/:id/claim        → claim an offer (first wins)
-4. GET  /tasks/:id               → get full task payload
-5. Execute task using browser
-6. POST /tasks/:id/steps         → report each step (action + screenshot)
-7. POST /tasks/:id/result        → submit final result
-8. Back to step 2
+3. POST /offers/:id/claim        → claim an offer (first wins, returns full task payload)
+4. Execute task using browser
+5. POST /tasks/:id/steps         → report each step (action + screenshot)
+6. POST /tasks/:id/result        → submit final result
+7. Back to step 2
 ```
 
 The offer payload is minimal — just enough for the node to decide:
@@ -133,7 +131,8 @@ The offer payload is minimal — just enough for the node to decide:
   "goal_summary": "signup on example.com",
   "mode": "simple",
   "estimated_steps": 5,
-  "payout_per_step": 320
+  "payout_per_step": 8,
+  "expires_at": "2026-01-15T12:00:15Z"
 }
 ```
 
@@ -144,22 +143,23 @@ claiming. Other nodes never see the consumer's data.
 
 The platform tracks a score per node to ensure quality and honesty:
 
-### Metrics
+### Score changes
 
-- **Claim rate** — how often does the node claim offers it receives
-- **Success rate** — how often do claimed tasks complete successfully
-- **Response time** — how fast does it poll and claim
-- **Step honesty** — are reported step counts consistent with similar tasks
-  (outlier detection, no AI needed, just stats)
+- **Successful task completion**: +2 points
+- **Failed task**: −3 points
+- **Step inflation** (reported steps > 2× estimated): −2 points
+- **Severe step inflation** (reported steps > 3× estimated): −5 points
+- Score range: **0–100** (initial score: 100)
 
 ### Effects
 
-- **High-score nodes** get offers first and more frequently
-- **Low-score nodes** get fewer offers, deprioritized in routing
-- **Very low-score nodes** may be temporarily suspended from receiving offers
+- **High-score nodes (80+)** get offers first in tight-match routing
+- **Mid-score nodes (50+)** eligible for wider routing tier
+- **Low-score nodes (<50)** only reached in widest routing fallback
+- **Very low-score nodes** may effectively stop receiving offers
 
 ### Outlier detection
 
-If the average step count for "signup on example.com" is 4 steps and a node
-consistently reports 12, it gets flagged. No AI needed — just statistical
-comparison against the task history.
+If the estimated step count for a task is 4 and a node reports 12, it
+gets penalized automatically. No AI needed — just ratio comparison
+against the task's `estimated_steps`.

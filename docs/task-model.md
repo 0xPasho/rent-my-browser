@@ -39,14 +39,21 @@ Response:
 202 Accepted
 {
   "task_id": "uuid",
+  "status": "queued",
   "estimate": {
     "tier": "real",
+    "mode": "simple",
     "complexity": "medium",
     "estimated_steps": 5,
     "estimated_cost": 100
   },
-  "max_budget": 300,
-  "status": "queued"
+  "routing": {
+    "geo": "US",
+    "site": "example.com",
+    "requiresResidentialIp": false,
+    "botDetectionLevel": "none"
+  },
+  "max_budget": 300
 }
 ```
 
@@ -105,9 +112,18 @@ POST /tasks/:id/steps
 {
   "step": 1,
   "action": "navigated to example.com/signup",
-  "screenshot": "base64..."
+  "screenshot": "base64..."    // optional
 }
+→ 200 {
+    "step": 1,
+    "action": "navigated to example.com/signup",
+    "screenshot_url": "/uploads/task-id/step_1.png",
+    "budget_remaining": 260
+  }
 ```
+
+The `budget_remaining` field tells the node how many credits are left.
+When it reaches 0, the node must stop execution immediately.
 
 This serves three purposes:
 
@@ -122,8 +138,8 @@ consumer's max budget.
 
 ```
 submitted → estimating → queued → offered → claimed → running → completed
-                                                │
-                                                └── failed
+                                                │         │
+                                                └── failed ┘
 ```
 
 ## How Consumers Receive Results

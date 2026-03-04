@@ -11,21 +11,21 @@ verification, and challenge-response authentication.
 ```
 POST /accounts
 { "wallet_address": "0x..." }
-→ 402 → pay $1 USDC → { "api_key": "rmb_c_..." }
+→ 201 { "account_id", "api_key": "rmb_c_...", "dashboard_url" }
 ```
 
-The wallet address is the identity. The API key is used for all subsequent
-requests. The credit balance is tied to the account.
+Registration is free. The wallet address is the identity. The API key is
+used for all subsequent requests. The credit balance is tied to the account.
 
 ### Node operator account
 
 ```
 POST /nodes
 { "wallet_address": "0x...", "node_type": "real" }
-→ 402 → pay $1 USDC → { "api_key": "rmb_n_..." }
+→ 201 { "account_id", "node_id", "api_key": "rmb_n_...", "dashboard_url" }
 ```
 
-Same model. API key goes into OpenClaw skill env vars. Node starts earning.
+Also free. API key goes into OpenClaw skill env vars. Node starts earning.
 Payouts go back to the same wallet used to register.
 
 ## Credits
@@ -41,9 +41,13 @@ Consumers prepay credits. Balance is stored in Postgres, tied to the API key.
 
 ### Top up
 
+Via x402 (USDC on Base). Choose a credit tier:
+
 ```
-POST /accounts/credits
-{ "amount": 1000 }
+POST /accounts/credits/crypto/:tier
+Authorization: Bearer <api_key>
+Tiers: 100, 500, 1000, 5000, 20000
+
 → 402 {
     chain: "base",
     token: "USDC",
@@ -53,21 +57,20 @@ POST /accounts/credits
     expires_at: "2026-..."
   }
 
-Agent sends USDC to address with memo → platform detects payment → credits added
+Agent sends USDC to address with memo → x402 middleware verifies payment
 
-POST /accounts/credits/confirm
-{ "tx_hash": "0x..." }
-→ { "balance": 1800 }
+→ 200 { "balance": 1800 }
 ```
 
-Fully programmatic. An autonomous AI agent can top up and submit tasks
-without any human in the loop.
+No separate confirmation step needed — the x402 middleware handles
+payment verification atomically. Fully programmatic. An autonomous AI
+agent can top up and submit tasks without any human in the loop.
 
 ### Check balance
 
 ```
 GET /accounts/me
-→ { "balance": 800, "total_spent": 200, "tasks_completed": 3 }
+→ { "id", "type", "walletAddress", "balance": 800, "totalSpent": 200, "totalEarned": 0, "createdAt" }
 ```
 
 ## Pricing Model
@@ -140,38 +143,6 @@ Consumer                           Platform
    │                                  │── release remaining hold
 ```
 
-### With x402 (no account, USDC on Base)
-
-```
-Consumer                           Platform
-   │                                  │
-   │── POST /tasks ──────────────────>│
-   │   { goal, context, max_budget }  │
-   │                                  │── validate, estimate
-   │<── 402 {                    ─────│
-   │     task_id,                     │
-   │     estimate,                    │
-   │     chain: "base",              │
-   │     token: "USDC",             │
-   │     address: "0x...",           │
-   │     amount: "3.00",            │
-   │     expires_at                   │
-   │   }                              │
-   │                                  │
-   │── (send USDC on Base) ─────────>│
-   │                                  │
-   │── POST /tasks/:id/confirm ──────>│
-   │   { tx_hash: "0x..." }          │
-   │                                  │── verify onchain
-   │                                  │── broadcast offer to nodes
-   │<── 202 { task_id } ─────────────│
-   │                                  │
-   │   ... node claims and executes ..│
-   │                                  │
-   │── GET /tasks/:id ───────────────>│
-   │<── 200 { result, actual_cost } ──│
-   │                                  │── refund difference onchain
-```
 
 ## Double-Entry Ledger
 
@@ -211,7 +182,7 @@ in the Postgres ledger.
 
 ```
 GET /accounts/me
-→ { "balance": 4500, "total_earned": 12000, "tasks_completed": 87 }
+→ { "id", "type": "operator", "walletAddress", "balance": 4500, "totalSpent": 0, "totalEarned": 12000, "createdAt" }
 ```
 
 Balance is in credits. 4500 credits = $45.00.
@@ -224,7 +195,7 @@ provide an address — it's already on file.
 ```
 POST /accounts/withdrawals
 { "amount": 4500 }
-→ { "amount": 4500, "usd": "$45.00", "address": "0x...", "tx_hash": "0x...", "status": "sent" }
+→ { "amount": 4500, "usd": "$45.00", "address": "0x...", "status": "pending_manual_review" }
 ```
 
 ### Payout policy

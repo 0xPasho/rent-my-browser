@@ -1,7 +1,9 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { db } from "../../db/index.js";
 import { accounts } from "../../db/schema/accounts.js";
 import { challenges } from "../../db/schema/challenges.js";
+import { emailChallenges } from "../../db/schema/email-challenges.js";
 import {
   ValidationError,
   NotFoundError,
@@ -13,9 +15,10 @@ import {
   generateChallenge,
   verifyWalletSignature,
   signDashboardJwt,
+  verifyDashboardJwt,
 } from "../auth/auth.lib.js";
 import { creditBalance, debitBalance } from "../ledger/ledger.service.js";
-import { and } from "drizzle-orm";
+import { emailSender } from "../../lib/email.js";
 
 // --- Registration ---
 
@@ -55,6 +58,7 @@ export async function getAccount(accountId: string) {
       id: accounts.id,
       type: accounts.type,
       walletAddress: accounts.walletAddress,
+      email: accounts.email,
       balance: accounts.balance,
       totalSpent: accounts.totalSpent,
       totalEarned: accounts.totalEarned,
@@ -220,4 +224,121 @@ export async function verifyChallenge(
     api_key: newApiKey,
     dashboard_url: `https://app.rentmybrowser.com/session?token=${jwt}`,
   };
+}
+
+// --- Email magic link ---
+
+export async function sendEmailMagicLink(email: string, baseUrl: string) {
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
+  // Find existing account with this email
+  const [existing] = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.email, email))
+    .limit(1);
+
+  await db.insert(emailChallenges).values({
+    email,
+    token,
+    accountId: existing?.id ?? null,
+    expiresAt,
+  });
+
+  const url = `${baseUrl}/auth/email/verify?token=${token}`;
+  await emailSender.sendMagicLink(email, url);
+
+  return { sent: true };
+}
+
+export async function verifyEmailToken(token: string) {
+  const [challenge] = await db
+    .select()
+    .from(emailChallenges)
+    .where(
+      and(
+        eq(emailChallenges.token, token),
+        eq(emailChallenges.used, false),
+      ),
+    )
+    .limit(1);
+
+  if (!challenge) {
+    throw new NotFoundError("Invalid or expired magic link");
+  }
+
+  if (new Date() > challenge.expiresAt) {
+    throw new ValidationError("Magic link has expired");
+  }
+
+  // Mark as used
+  await db
+    .update(emailChallenges)
+    .set({ used: true })
+    .where(eq(emailChallenges.id, challenge.id));
+
+  let accountId: string;
+
+  if (challenge.accountId) {
+    // Existing account — just log in
+    accountId = challenge.accountId;
+  } else {
+    // New account — create consumer with a generated wallet placeholder
+    const rawApiKey = generateApiKey("consumer");
+    const apiKeyHash = hashApiKey(rawApiKey);
+    // Use a deterministic placeholder wallet address (not a real wallet)
+    const placeholderWallet = `0x${"0".repeat(40)}`;
+
+    // Check if placeholder wallet is taken — generate unique one
+    const walletAddress = `0x${randomBytes(20).toString("hex")}` as string;
+
+    const [newAccount] = await db
+      .insert(accounts)
+      .values({
+        walletAddress,
+        email: challenge.email,
+        apiKeyHash,
+        type: "consumer",
+      })
+      .returning({ id: accounts.id });
+
+    accountId = newAccount.id;
+  }
+
+  const jwt = await signDashboardJwt(accountId);
+
+  return {
+    account_id: accountId,
+    token: jwt,
+  };
+}
+
+// --- Session (JWT-based) ---
+
+export async function getSession(jwtToken: string) {
+  const { accountId } = await verifyDashboardJwt(jwtToken);
+  return getAccount(accountId);
+}
+
+// --- Update email ---
+
+export async function updateAccountEmail(accountId: string, email: string) {
+  // Check if email is already taken by another account
+  const [existing] = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.email, email))
+    .limit(1);
+
+  if (existing && existing.id !== accountId) {
+    throw new ValidationError("Email already in use by another account");
+  }
+
+  await db
+    .update(accounts)
+    .set({ email, updatedAt: new Date() })
+    .where(eq(accounts.id, accountId));
+
+  return { email };
 }

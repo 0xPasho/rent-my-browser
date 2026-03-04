@@ -65,6 +65,7 @@ export const paymentStatusEnum = pgEnum("payment_status", [
 export const accounts = pgTable("accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
   walletAddress: varchar("wallet_address", { length: 42 }).notNull().unique(),
+  email: varchar("email", { length: 255 }).unique(),
   apiKeyHash: varchar("api_key_hash", { length: 128 }).notNull().unique(),
   type: accountTypeEnum("type").notNull(),
   balance: integer("balance").notNull().default(0),
@@ -246,5 +247,24 @@ export const challenges = pgTable(
   },
   (t) => [
     index("challenges_wallet_used_idx").on(t.walletAddress, t.used),
+  ],
+);
+
+export const emailChallenges = pgTable(
+  "email_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: varchar("email", { length: 255 }).notNull(),
+    token: varchar("token", { length: 128 }).notNull().unique(),
+    accountId: uuid("account_id").references(() => accounts.id),
+    used: boolean("used").notNull().default(false),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("email_challenges_token_idx").on(t.token),
+    index("email_challenges_email_used_idx").on(t.email, t.used),
   ],
 );

@@ -99,15 +99,5 @@ router.post(
   }),
 );
 
-// POST /tasks/:id/confirm — x402 payment confirmation (stub for v1)
-router.post(
-  "/tasks/:id/confirm",
-  asyncHandler(async (_req, res) => {
-    res.status(501).json({
-      error: "NOT_IMPLEMENTED",
-      message: "x402 per-task payment is not yet supported. Use credit-based flow.",
-    });
-  }),
-);
 
 export { router as tasksRoutes };

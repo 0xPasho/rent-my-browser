@@ -7,7 +7,7 @@ All endpoints use JSON. Auth via `Authorization: Bearer <api_key>` unless noted.
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | `/accounts` | No | Register consumer account (free). Returns API key. |
-| GET | `/accounts/me` | API key | Account info: balance, spent, earned. |
+| GET | `/accounts/me` | API key | Account info: id, type, walletAddress, balance, totalSpent, totalEarned, createdAt. |
 | POST | `/auth/challenge` | No | Request wallet challenge message. |
 | POST | `/auth/verify` | No | Submit signature → new API key + dashboard URL. |
 
@@ -25,7 +25,6 @@ All endpoints use JSON. Auth via `Authorization: Bearer <api_key>` unless noted.
 |---|---|---|---|
 | POST | `/tasks` | API key (consumer) | Submit task. Body: `{ goal, context, max_budget }`. Returns 202. |
 | GET | `/tasks/:id` | API key | Poll task status and result. |
-| POST | `/tasks/:id/confirm` | No | x402 per-task payment (stub, 501). |
 
 ## Nodes (Operator)
 
@@ -46,7 +45,7 @@ All endpoints use JSON. Auth via `Authorization: Bearer <api_key>` unless noted.
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | POST | `/tasks/:id/steps` | API key (operator) | Report step. Body: `{ step, action, screenshot }`. |
-| POST | `/tasks/:id/result` | API key (operator) | Submit result. Body: `{ status, extracted_data, final_url }`. |
+| POST | `/tasks/:id/result` | API key (operator) | Submit result. Body: `{ status, extracted_data, final_url, files? }`. |
 
 ## Withdrawals
 
@@ -58,8 +57,8 @@ All endpoints use JSON. Auth via `Authorization: Bearer <api_key>` unless noted.
 
 Public MCP server at `POST /mcp`. No auth to connect. See [MCP docs](./mcp.md).
 
-8 tools (9 in development): `create_account`, `create_node`, `auth_challenge`,
-`auth_verify`, `get_balance`, `submit_task`, `get_task`, `add_test_credits` (dev).
+8 tools: `create_account`, `create_node`, `auth_challenge`, `auth_verify`,
+`get_balance`, `submit_task`, `get_task`, `add_test_credits` (sandbox only).
 
 ## Response Patterns
 

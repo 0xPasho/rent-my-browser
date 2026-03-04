@@ -15,14 +15,16 @@ The MCP server is for the **consumer/agent side** (using browsers).
 {
   "mcpServers": {
     "rent-my-browser": {
-      "url": "https://api.rentmybrowser.com/mcp",
-      "headers": {
-        "Authorization": "Bearer rmb_c_your_key_here"
-      }
+      "url": "https://api.rentmybrowser.com/mcp"
     }
   }
 }
 ```
+
+No auth headers needed to connect. Authentication is per-tool — pass your
+`api_key` as a parameter to tools that require it (submit_task, get_task,
+get_balance). Public tools (create_account, create_node, auth_challenge,
+auth_verify) don't need an API key.
 
 ## MCP Tools
 
@@ -32,20 +34,24 @@ Submit a browser task for execution.
 
 ```
 Input:
+  api_key: "rmb_c_..."
   goal: "Go to example.com/signup, fill the form with the provided data, submit it"
-  context: {
-    data: { name: "John Doe", email: "john@example.com" },
-    tier: "real",
-    mode: "simple",
-    geo: "US"
-  }
+  context_data: { name: "John Doe", email: "john@example.com" }
+  tier: "real"          (default: "auto", options: "headless" | "real" | "auto")
+  mode: "simple"        (default: "simple", options: "simple" | "adversarial")
+  geo: "US"             (optional, ISO 3166-1 alpha-2 country code)
   max_budget: 300
 
 Output:
   task_id: "uuid"
   status: "queued"
-  estimate: { steps: 5, cost: 100 }
+  estimate: { tier, mode, complexity, estimated_steps: 5, estimated_cost: 100 }
+  routing: { geo, site, requiresResidentialIp, botDetectionLevel }
+  max_budget: 300
 ```
+
+Note: parameters are **flat** (not nested under `context`). The MCP tool
+reassembles them into the REST API shape internally.
 
 Auth required. Deducts max_budget hold from credit balance.
 
@@ -55,19 +61,29 @@ Check task status and retrieve results.
 
 ```
 Input:
+  api_key: "rmb_c_..."
   task_id: "uuid"
 
 Output:
   task_id: "uuid"
   status: "completed"
-  steps_executed: 4
+  tier: "real"
+  mode: "simple"
+  complexity: "medium"
+  steps_completed: 4
+  estimated_steps: 5
+  estimated_cost: 100
   actual_cost: 40
+  max_budget: 300
   result: {
     screenshots: ["https://cdn.../signed-url"],
     extracted_data: { confirmation_id: "ABC123" },
     final_url: "https://example.com/success",
     files: []
   }
+  duration_ms: 12400
+  steps: [{ step_number, action, screenshot_url, created_at }, ...]
+  created_at, started_at, completed_at
 ```
 
 Auth required.
@@ -77,15 +93,16 @@ Auth required.
 Check credit balance.
 
 ```
-Input: (none)
+Input:
+  api_key: "rmb_c_..."
 
 Output:
   balance: 800
   total_spent: 200
-  tasks_completed: 3
+  total_earned: 0
 ```
 
-Auth required.
+Auth required. Returns a subset of account info (balance fields only).
 
 ## How an Agent Uses This
 
@@ -116,11 +133,16 @@ Agent uses the result to continue its own workflow
 The MCP server is a thin wrapper over the REST API. It translates MCP tool
 calls into REST requests:
 
-| MCP Tool | REST Equivalent |
-|---|---|
-| `submit_task` | `POST /tasks` |
-| `get_task` | `GET /tasks/:id` |
-| `get_balance` | `GET /accounts/me` |
+| MCP Tool | REST Equivalent | Auth |
+|---|---|---|
+| `create_account` | `POST /accounts` | No |
+| `create_node` | `POST /nodes` | No |
+| `auth_challenge` | `POST /auth/challenge` | No |
+| `auth_verify` | `POST /auth/verify` | No |
+| `get_balance` | `GET /accounts/me` | api_key |
+| `submit_task` | `POST /tasks` | api_key |
+| `get_task` | `GET /tasks/:id` | api_key |
+| `add_test_credits` | `POST /accounts/credits/alternative` | api_key (sandbox only) |
 
 The MCP server lives in the same `apps/server` deployment. It's just another
 transport layer — same auth, same logic, same database.

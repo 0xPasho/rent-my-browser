@@ -4,3 +4,9 @@ dist
 .env.local
 .env.*.local
 *.tsbuildinfo
+.next
+out
+
+# Skill runtime state (credentials, session data, PIDs)
+skill/state/*
+!skill/state/.gitkeep

@@ -20,6 +20,9 @@ POST /nodes
 → 201 { "account_id", "node_id", "api_key": "rmb_n_...", "dashboard_url" }
 ```
 
+The `dashboard_url` contains a JWT token valid for 24 hours. To get a
+fresh URL after expiry, use the challenge/verify flow below.
+
 ## How Agents Get Wallets
 
 ```javascript
