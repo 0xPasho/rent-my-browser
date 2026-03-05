@@ -5,25 +5,6 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { NodeLocation } from "./use-network-stats";
 
-const DEFAULT_LOCATIONS: NodeLocation[] = [
-  { lng: -122.42, lat: 37.77, city: "San Francisco", nodes: 23 },
-  { lng: -73.94, lat: 40.73, city: "New York", nodes: 31 },
-  { lng: -43.17, lat: -22.91, city: "Sao Paulo", nodes: 8 },
-  { lng: 13.41, lat: 52.52, city: "Berlin", nodes: 18 },
-  { lng: 2.35, lat: 48.86, city: "Paris", nodes: 12 },
-  { lng: -0.12, lat: 51.51, city: "London", nodes: 21 },
-  { lng: 139.69, lat: 35.69, city: "Tokyo", nodes: 11 },
-  { lng: 126.98, lat: 37.57, city: "Seoul", nodes: 7 },
-  { lng: 103.82, lat: 1.35, city: "Singapore", nodes: 5 },
-  { lng: 77.21, lat: 28.61, city: "New Delhi", nodes: 4 },
-  { lng: 151.21, lat: -33.87, city: "Sydney", nodes: 3 },
-  { lng: -79.38, lat: 43.65, city: "Toronto", nodes: 4 },
-];
-
-const DEFAULT_COUNTRIES = [
-  "US", "DE", "BR", "JP", "AU", "IN", "FR", "GB", "KR", "SG", "CA",
-];
-
 const ROTATION_SPEED = 0.015;
 const RESUME_DELAY = 3000; // resume auto-rotate 3s after user stops dragging
 
@@ -32,9 +13,9 @@ interface GlobeProps {
   locations?: NodeLocation[];
 }
 
-export function Globe({ countries, locations }: GlobeProps = {}) {
-  const nodeCountries = countries ?? DEFAULT_COUNTRIES;
-  const nodeLocations = locations ?? DEFAULT_LOCATIONS;
+export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
+  const nodeCountries = countries;
+  const nodeLocations = locations;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const frameRef = useRef<number>(0);
