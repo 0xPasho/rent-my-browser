@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
-# Background polling loop for the Rent My Browser skill.
+# Polling loop for the Rent My Browser skill.
 # Sends heartbeats, polls for task offers, and claims them.
-# Communicates with the agent via files in state/.
 #
-# Usage: bash poll-loop.sh &
-# Stop: kill $(cat state/poll-loop.pid) or run disconnect.sh
+# Modes:
+#   bash poll-loop.sh --once    (foreground, claims one task, prints JSON to stdout, exits)
+#   bash poll-loop.sh &         (background, writes tasks to state/current-task.json)
+#
+# Stop background mode: kill $(cat state/poll-loop.pid) or run disconnect.sh
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 rmb_check_deps
 rmb_load_state || true
 rmb_ensure_auth
+
+ONCE_MODE=false
+if [ "${1:-}" = "--once" ]; then
+  ONCE_MODE=true
+fi
 
 HEARTBEAT_INTERVAL=25
 POLL_INTERVAL=5
@@ -144,7 +151,14 @@ while $running; do
       fi
       rm -f "$TASK_FILE.tmp"
 
-      # Validation passed — write for the agent
+      # ── --once mode: print task to stdout and exit ─────────────────────
+      if $ONCE_MODE; then
+        echo "$local_task"
+        rm -f "$PID_FILE"
+        exit 0
+      fi
+
+      # ── Background mode: write file and wait for agent ─────────────────
       echo "$local_task" > "$TASK_FILE.tmp"
       mv "$TASK_FILE.tmp" "$TASK_FILE"
 

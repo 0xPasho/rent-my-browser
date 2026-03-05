@@ -10,7 +10,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 STATE_DIR="$SKILL_DIR/state"
 
+# Persistent dir survives skill updates (stored outside the skill directory)
+PERSIST_DIR="${RMB_PERSIST_DIR:-$HOME/.rent-my-browser}"
+
 mkdir -p "$STATE_DIR"
+mkdir -p "$PERSIST_DIR"
 
 # ── Logging ─────────────────────────────────────────────────────────────────
 rmb_log() {
@@ -45,33 +49,57 @@ rmb_ensure_auth() {
 }
 
 # ── State management ────────────────────────────────────────────────────────
+# Credentials are saved to both state/ (local) and ~/.rent-my-browser/ (persistent).
+# On load, we check local first, then fall back to persistent (survives skill updates).
+
 rmb_load_state() {
   local state_file="$STATE_DIR/credentials.json"
+  local persist_file="$PERSIST_DIR/credentials.json"
+
+  # Try local first, fall back to persistent backup
+  local source_file=""
   if [ -f "$state_file" ]; then
-    # Export state values if not already set via env
-    if [ -z "${RMB_NODE_ID:-}" ]; then
-      RMB_NODE_ID="$(jq -r '.node_id // empty' "$state_file" 2>/dev/null || true)"
-      export RMB_NODE_ID
-    fi
-    if [ -z "${RMB_API_KEY:-}" ]; then
-      RMB_API_KEY="$(jq -r '.api_key // empty' "$state_file" 2>/dev/null || true)"
-      export RMB_API_KEY
-    fi
-    if [ -z "${RMB_WALLET_ADDRESS:-}" ]; then
-      RMB_WALLET_ADDRESS="$(jq -r '.wallet_address // empty' "$state_file" 2>/dev/null || true)"
-      export RMB_WALLET_ADDRESS
-    fi
-    return 0
+    source_file="$state_file"
+  elif [ -f "$persist_file" ]; then
+    rmb_log INFO "Restoring credentials from $persist_file"
+    cp "$persist_file" "$state_file"
+    source_file="$state_file"
   fi
-  return 1
+
+  if [ -z "$source_file" ]; then
+    return 1
+  fi
+
+  # Export state values if not already set via env
+  if [ -z "${RMB_NODE_ID:-}" ]; then
+    RMB_NODE_ID="$(jq -r '.node_id // empty' "$source_file" 2>/dev/null || true)"
+    export RMB_NODE_ID
+  fi
+  if [ -z "${RMB_API_KEY:-}" ]; then
+    RMB_API_KEY="$(jq -r '.api_key // empty' "$source_file" 2>/dev/null || true)"
+    export RMB_API_KEY
+  fi
+  if [ -z "${RMB_WALLET_ADDRESS:-}" ]; then
+    RMB_WALLET_ADDRESS="$(jq -r '.wallet_address // empty' "$source_file" 2>/dev/null || true)"
+    export RMB_WALLET_ADDRESS
+  fi
+  return 0
 }
 
 rmb_save_state() {
   local json="$1"
+
+  # Save to local state dir
   local state_file="$STATE_DIR/credentials.json"
   local tmp_file="$state_file.tmp"
   echo "$json" > "$tmp_file"
   mv "$tmp_file" "$state_file"
+
+  # Also save to persistent dir (survives skill updates)
+  local persist_file="$PERSIST_DIR/credentials.json"
+  local persist_tmp="$persist_file.tmp"
+  echo "$json" > "$persist_tmp"
+  mv "$persist_tmp" "$persist_file"
 }
 
 # ── HTTP client ─────────────────────────────────────────────────────────────

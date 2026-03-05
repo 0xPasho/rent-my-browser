@@ -41,36 +41,29 @@ control back.
      `RMB_WALLET_ADDRESS` to use your own wallet instead.
    - If credentials exist, it sends a heartbeat to mark the node online.
 
-3. **Start polling**: Run `bash {baseDir}/scripts/poll-loop.sh &` in the
-   background. This handles heartbeats (every 25s) and offer polling
-   (every 5s) automatically.
+3. **Wait for a task**: Run `bash {baseDir}/scripts/poll-loop.sh --once`.
 
-4. **Wait for tasks in a loop**: You **must** stay in a continuous monitoring
-   loop after starting the poll-loop. This is the core of the skill — do NOT
-   exit or consider yourself done after starting the poll-loop.
+   This runs in the **foreground** — it handles heartbeats and polls for
+   offers automatically. When a task is claimed, it **prints the full task
+   JSON to stdout and exits**. You get the task directly as output.
 
-   Run this loop and keep checking every 5 seconds:
-   ```bash
-   while [ ! -f {baseDir}/state/current-task.json ]; do sleep 5; done
-   ```
-   When the file appears, **immediately** read it and execute the task
-   (step 5). After completing the task, **return to this loop** and wait
-   for the next one. Never stop monitoring unless the owner needs you or
-   `disconnect.sh` is called.
+   This command blocks until a task arrives. That is expected — just wait.
 
-5. **Execute tasks**: When `current-task.json` appears, read it **immediately**
-   and follow the Task Execution Protocol below. Speed matters — the consumer
-   is waiting for results.
+4. **Execute the task**: Read the JSON output from step 3 and follow the
+   Task Execution Protocol below. Speed matters — the consumer is waiting.
+
+5. **Repeat**: After completing the task, go back to step 3 and run
+   `bash {baseDir}/scripts/poll-loop.sh --once` again. Keep looping
+   forever: wait for task → execute → report → wait for next task.
+   Never stop unless the owner needs you or `disconnect.sh` is called.
 
 ## Task execution protocol
 
-When `{baseDir}/state/current-task.json` appears:
+When `poll-loop.sh --once` returns task JSON:
 
 ### 1. Read the task
 
-```bash
-cat {baseDir}/state/current-task.json
-```
+The task JSON was printed to stdout by the poll-loop. Parse it directly.
 
 Key fields:
 - `task_id` — unique identifier, needed for step/result reporting
@@ -141,12 +134,10 @@ clean session. Then the poll-loop automatically resumes looking for new tasks.
 
 ### 5. Resume monitoring
 
-**Immediately** go back to step 4 of Quick Start — enter the wait loop again:
-```bash
-while [ ! -f {baseDir}/state/current-task.json ]; do sleep 5; done
-```
-Do NOT stop, do NOT consider the skill finished. You must keep looping
-and waiting for the next task until the owner explicitly needs you back.
+**Immediately** go back to step 3 of Quick Start — run
+`bash {baseDir}/scripts/poll-loop.sh --once` again to wait for the next task.
+Do NOT stop, do NOT consider the skill finished. Keep looping until the
+owner explicitly needs you back.
 
 ## Adversarial mode
 
@@ -272,8 +263,11 @@ Report in a concise format:
 | `RMB_BLOCKED_DOMAINS` | No | Comma-separated domains to never visit. |
 | `RMB_MAX_CONCURRENT` | No | Max concurrent tasks (default: 1). |
 | `RMB_ALLOWED_MODES` | No | Comma-separated task modes to accept (default: all). |
+| `RMB_PERSIST_DIR` | No | Directory for persistent data that survives updates. Default: `~/.rent-my-browser`. |
 
 *Either provide `RMB_API_KEY` + `RMB_NODE_ID`, or have `state/credentials.json` from a previous session. For first-time registration, a wallet is auto-generated unless `RMB_WALLET_ADDRESS` is set.
+
+Credentials and wallet keys are automatically backed up to `~/.rent-my-browser/` so they survive skill updates and reinstalls.
 
 ## Troubleshooting
 
@@ -292,7 +286,7 @@ Report in a concise format:
 |---|---|
 | `{baseDir}/scripts/connect.sh` | Register node and send initial heartbeat |
 | `{baseDir}/scripts/disconnect.sh` | Graceful shutdown |
-| `{baseDir}/scripts/poll-loop.sh` | Background heartbeat + offer polling |
+| `{baseDir}/scripts/poll-loop.sh` | Heartbeat + offer polling (`--once` for foreground mode) |
 | `{baseDir}/scripts/report-step.sh` | Report a single execution step |
 | `{baseDir}/scripts/report-result.sh` | Submit final task result |
 | `{baseDir}/scripts/detect-capabilities.sh` | Detect node type, browser, geo |
@@ -300,3 +294,5 @@ Report in a concise format:
 | `{baseDir}/state/current-task.json` | Active task payload (written by poll-loop) |
 | `{baseDir}/state/session-stats.json` | Running session statistics |
 | `{baseDir}/references/api-reference.md` | Compact API reference |
+| `~/.rent-my-browser/credentials.json` | Persistent backup of credentials (survives updates) |
+| `~/.rent-my-browser/wallet.json` | Persistent backup of wallet key (survives updates) |
