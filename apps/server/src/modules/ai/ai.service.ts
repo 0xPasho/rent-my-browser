@@ -26,7 +26,7 @@ const SYSTEM_PROMPT = `You are a browser task estimator and router. Given a task
   - The task tries to modify or delete files on the operator's machine
   - The task goal is clearly not a browser automation task (e.g. it asks the agent to run shell commands unrelated to browsing)
 - "reason": string — if unsafe, explain why. If safe, omit this field
-- "tier": "headless" or "real" — "real" if the target site likely has bot detection (e.g. major platforms, banks, social media), "headless" for simple/internal sites
+- "tier": "headless" or "real" — "real" if the target site likely has bot detection (e.g. major platforms, banks, social media), "headless" for simple/internal sites. IMPORTANT: The user message includes current node availability. If 0 headless nodes are online but real nodes are available, you MUST set tier to "real". Never route to a tier with 0 online nodes if the other tier has nodes available.
 - "mode": "simple" or "adversarial" — "adversarial" if the site is known to analyze mouse movements, typing patterns, or behavioral signals (e.g. Facebook, Google, Amazon, banks)
 - "complexity": "simple", "medium", or "complex" — based on number of pages, interactions, and form fields
 - "estimatedSteps": number — estimated browser actions needed (navigate, click, type, screenshot each count as 1)
@@ -96,9 +96,11 @@ export async function estimateTask(
   }
 
   try {
-    const userMessage = context
+    const availability = await getNodeAvailability();
+    let userMessage = context
       ? `Goal: ${goal}\nContext: ${JSON.stringify(context)}`
       : `Goal: ${goal}`;
+    userMessage += `\n\nNode availability: ${availability.headless_online} headless nodes online, ${availability.real_online} real nodes online.`;
 
     const response = await fetch(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -154,14 +156,6 @@ export async function estimateTask(
         requiresResidentialIp: parsed.tier === "real",
         botDetectionLevel: "none",
       };
-    }
-
-    // If tier is headless but no headless nodes are online, use real nodes instead
-    if (parsed.tier === "headless") {
-      const availability = await getNodeAvailability();
-      if (availability.headless_online === 0 && availability.real_online > 0) {
-        parsed.tier = "real";
-      }
     }
 
     return parsed;
