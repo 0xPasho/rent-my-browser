@@ -20,7 +20,7 @@ class PostmarkEmailSender implements EmailSender {
 
   async sendMagicLink(email: string, url: string): Promise<void> {
     await this.client.sendEmail({
-      From: env.POSTMARK_FROM_EMAIL,
+      From: env.POSTMARK_FROM_EMAIL!,
       To: email,
       Subject: "Your login link — Rent My Browser",
       TextBody: `Here's your magic link to sign in:\n\n${url}\n\nThis link expires in 15 minutes.\n\nIf you didn't request this, you can safely ignore this email.`,
