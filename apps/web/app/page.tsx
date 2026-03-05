@@ -5,6 +5,7 @@ import { HowItWorks } from "@/modules/how-it-works/how-it-works";
 import { Pricing } from "@/modules/pricing/pricing";
 import { ForOperators } from "@/modules/operators/for-operators";
 import { Security } from "@/modules/security/security";
+import { Showcase } from "@/modules/showcase/showcase";
 import { FAQ } from "@/modules/faq/faq";
 import { PoweredBy } from "@/modules/trust/powered-by";
 import { Footer } from "@/modules/layout/footer";
@@ -44,6 +45,7 @@ export default function Home() {
       <main>
         <Hero />
         <HowItWorks />
+        <Showcase />
         <Pricing />
         <ForOperators />
         <Security />

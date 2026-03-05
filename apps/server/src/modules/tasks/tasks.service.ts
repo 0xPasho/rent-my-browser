@@ -275,6 +275,62 @@ export async function getTask(taskId: string, accountId: string) {
   };
 }
 
+export async function getShowcaseTasks(limit = 6) {
+  const rows = await db
+    .select({
+      id: tasks.id,
+      goal: tasks.goal,
+      tier: tasks.tier,
+      mode: tasks.mode,
+      stepsCompleted: tasks.stepsCompleted,
+      actualCost: tasks.actualCost,
+      durationMs: tasks.durationMs,
+      result: tasks.result,
+      completedAt: tasks.completedAt,
+    })
+    .from(tasks)
+    .where(eq(tasks.status, "completed"))
+    .orderBy(desc(tasks.completedAt))
+    .limit(limit);
+
+  // Fetch steps with screenshots for each task
+  const enriched = await Promise.all(
+    rows.map(async (task) => {
+      const taskSteps = await db
+        .select({
+          step_number: steps.stepNumber,
+          action: steps.action,
+          screenshot_url: steps.screenshotUrl,
+        })
+        .from(steps)
+        .where(eq(steps.taskId, task.id))
+        .orderBy(steps.stepNumber);
+
+      const result = task.result as {
+        extracted_data?: Record<string, unknown>;
+        final_url?: string;
+        screenshots?: string[];
+      } | null;
+
+      return {
+        task_id: task.id,
+        goal: task.goal,
+        tier: task.tier,
+        mode: task.mode,
+        steps_completed: task.stepsCompleted,
+        actual_cost: task.actualCost,
+        duration_ms: task.durationMs,
+        completed_at: task.completedAt,
+        extracted_data: result?.extracted_data || {},
+        final_url: result?.final_url,
+        steps: taskSteps,
+      };
+    }),
+  );
+
+  return { tasks: enriched };
+}
+
 function verifyNodeOwnsTask(
   task: { nodeId: string | null; status: string | null },
   nodeId: string,

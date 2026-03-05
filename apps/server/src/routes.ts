@@ -5,6 +5,7 @@ import { nodesRoutes } from "./modules/nodes/nodes.routes.js";
 import { offersRoutes } from "./modules/offers/offers.routes.js";
 import { mcpRoutes } from "./modules/mcp/mcp.routes.js";
 import { getNetworkStats } from "./modules/nodes/nodes.service.js";
+import { getShowcaseTasks } from "./modules/tasks/tasks.service.js";
 
 const router: RouterType = Router();
 
@@ -15,6 +16,11 @@ router.get("/health", (_req, res) => {
 router.get("/stats", async (_req, res) => {
   const { headless_nodes, real_nodes, ...publicStats } = await getNetworkStats();
   res.json(publicStats);
+});
+
+router.get("/showcase", async (_req, res) => {
+  const data = await getShowcaseTasks(6);
+  res.json(data);
 });
 
 router.use(accountsRoutes);
