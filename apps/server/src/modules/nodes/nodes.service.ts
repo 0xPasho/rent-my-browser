@@ -39,7 +39,20 @@ export async function createNodeOperator(
       );
     }
 
-    throw new ValidationError("Account already exists for this wallet address");
+    // Attach a node to the existing account
+    const [node] = await db
+      .insert(nodes)
+      .values({ accountId: existingAccount[0].id, type: nodeType })
+      .returning({ id: nodes.id });
+
+    const jwt = await signDashboardJwt(existingAccount[0].id);
+
+    return {
+      account_id: existingAccount[0].id,
+      node_id: node.id,
+      api_key: null,
+      dashboard_url: `https://app.rentmybrowser.dev/session?token=${jwt}`,
+    };
   }
 
   const rawApiKey = generateApiKey("operator");

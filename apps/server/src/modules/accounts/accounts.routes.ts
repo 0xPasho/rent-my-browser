@@ -7,7 +7,6 @@ import { x402Server } from "../../lib/x402.js";
 import { stripe } from "../../lib/stripe.js";
 import { logger } from "../../index.js";
 import { auth } from "../../middleware/auth.js";
-import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
 import {
@@ -235,7 +234,7 @@ for (const [key, tier] of Object.entries(TOPUP_TIERS)) {
 router.post(
   "/accounts/credits/crypto/:tier",
   auth,
-  requireType("consumer"),
+
   paymentMiddleware(x402TopupRoutes, x402Server),
   asyncHandler(async (req, res) => {
     const tierKey = req.params.tier as string;
@@ -264,7 +263,7 @@ const stripeSchema = z.object({
 router.post(
   "/accounts/credits/stripe",
   auth,
-  requireType("consumer"),
+
   validate(stripeSchema),
   asyncHandler(async (req, res) => {
     if (!stripe) {
@@ -385,7 +384,7 @@ if (isSandbox) {
   router.post(
     "/accounts/credits/alternative",
     auth,
-    requireType("consumer"),
+  
     validate(alternativeSchema),
     asyncHandler(async (req, res) => {
       const result = await addCredits(req.account!.id, req.body.amount);
@@ -407,7 +406,7 @@ const withdrawSchema = z.object({
 router.post(
   "/accounts/withdrawals",
   auth,
-  requireType("operator"),
+
   validate(withdrawSchema),
   asyncHandler(async (req, res) => {
     const result = await requestWithdrawal(req.account!.id, req.body.amount);

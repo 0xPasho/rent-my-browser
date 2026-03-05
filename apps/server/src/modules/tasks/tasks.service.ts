@@ -1,4 +1,4 @@
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, or, inArray, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { tasks } from "../../db/schema/tasks.js";
 import { steps } from "../../db/schema/steps.js";
@@ -144,27 +144,23 @@ export async function createTask(accountId: string, input: CreateTaskInput) {
 
 export async function listTasks(
   accountId: string,
-  accountType: "consumer" | "operator",
   opts: { status?: string; limit?: number; offset?: number } = {},
 ) {
   const limit = Math.min(opts.limit ?? 50, 100);
   const offset = opts.offset ?? 0;
 
-  let condition;
-  if (accountType === "consumer") {
-    condition = eq(tasks.accountId, accountId);
-  } else {
-    // Operator: find tasks assigned to their node(s)
-    const operatorNodes = await db
-      .select({ id: nodes.id })
-      .from(nodes)
-      .where(eq(nodes.accountId, accountId));
-    const nodeIds = operatorNodes.map((n) => n.id);
-    if (nodeIds.length === 0) {
-      return { tasks: [], total: 0 };
-    }
-    condition = inArray(tasks.nodeId, nodeIds);
-  }
+  // Show tasks the account created OR tasks assigned to their node(s)
+  const ownedCondition = eq(tasks.accountId, accountId);
+
+  const operatorNodes = await db
+    .select({ id: nodes.id })
+    .from(nodes)
+    .where(eq(nodes.accountId, accountId));
+  const nodeIds = operatorNodes.map((n) => n.id);
+
+  const condition = nodeIds.length > 0
+    ? or(ownedCondition, inArray(tasks.nodeId, nodeIds))
+    : ownedCondition;
 
   const statusFilter = opts.status
     ? and(condition, eq(tasks.status, opts.status as any))

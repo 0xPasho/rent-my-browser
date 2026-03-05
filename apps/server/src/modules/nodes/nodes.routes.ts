@@ -1,7 +1,6 @@
 import { Router, type Router as RouterType } from "express";
 import { z } from "zod";
 import { auth } from "../../middleware/auth.js";
-import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
 import { createNodeOperator } from "./nodes.service.js";
@@ -54,7 +53,7 @@ const heartbeatSchema = z.object({
 router.post(
   "/nodes/:id/heartbeat",
   auth,
-  requireType("operator"),
+
   validate(heartbeatSchema),
   asyncHandler(async (req, res) => {
     const result = await processHeartbeat(
@@ -70,7 +69,7 @@ router.post(
 router.get(
   "/nodes/:id/offers",
   auth,
-  requireType("operator"),
+
   asyncHandler(async (req, res) => {
     const result = await getNodeOffers(
       req.params.id as string,

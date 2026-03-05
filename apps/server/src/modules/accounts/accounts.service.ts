@@ -140,10 +140,6 @@ export async function requestWithdrawal(accountId: string, amount: number) {
     throw new NotFoundError("Account not found");
   }
 
-  if (account.type !== "operator") {
-    throw new AuthError("Only operators can withdraw");
-  }
-
   if (amount < 500) {
     throw new ValidationError("Minimum withdrawal is 500 credits ($5.00)");
   }

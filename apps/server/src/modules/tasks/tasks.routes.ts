@@ -1,7 +1,6 @@
 import { Router, type Router as RouterType } from "express";
 import { z } from "zod";
 import { auth } from "../../middleware/auth.js";
-import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
 import { createTask, listTasks, getTask, recordStep, submitResult } from "./tasks.service.js";
@@ -35,7 +34,6 @@ const createTaskSchema = z.object({
 router.post(
   "/tasks",
   auth,
-  requireType("consumer"),
   validate(createTaskSchema),
   asyncHandler(async (req, res) => {
     const result = await createTask(req.account!.id, req.body);
@@ -50,7 +48,6 @@ router.get(
   asyncHandler(async (req, res) => {
     const result = await listTasks(
       req.account!.id,
-      req.account!.type as "consumer" | "operator",
       {
         status: req.query.status as string | undefined,
         limit: req.query.limit ? Number(req.query.limit) : undefined,
@@ -81,7 +78,6 @@ const stepSchema = z.object({
 router.post(
   "/tasks/:id/steps",
   auth,
-  requireType("operator"),
   validate(stepSchema),
   asyncHandler(async (req, res) => {
     const result = await recordStep(
@@ -111,7 +107,6 @@ const resultSchema = z.object({
 router.post(
   "/tasks/:id/result",
   auth,
-  requireType("operator"),
   validate(resultSchema),
   asyncHandler(async (req, res) => {
     const result = await submitResult(

@@ -445,7 +445,6 @@ Consumers see tasks they submitted. Operators see tasks assigned to their node.`
       const account = await resolveAccount(params.api_key);
       const result = await listTasks(
         account.id,
-        account.type as "consumer" | "operator",
         {
           status: params.status,
           limit: params.limit,

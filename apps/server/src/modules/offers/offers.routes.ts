@@ -1,7 +1,6 @@
 import { Router, type Router as RouterType } from "express";
 import { z } from "zod";
 import { auth } from "../../middleware/auth.js";
-import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
 import { claimOffer } from "./offers.service.js";
@@ -16,7 +15,7 @@ const claimSchema = z.object({
 router.post(
   "/offers/:id/claim",
   auth,
-  requireType("operator"),
+
   validate(claimSchema),
   asyncHandler(async (req, res) => {
     const result = await claimOffer(
