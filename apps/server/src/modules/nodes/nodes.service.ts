@@ -240,7 +240,7 @@ interface NetworkStats {
 }
 
 let statsCache: { data: NetworkStats; expiresAt: number } | null = null;
-const STATS_CACHE_TTL = 60_000; // 60 seconds
+const STATS_CACHE_TTL = 15_000; // 15 seconds
 
 export async function getNetworkStats(): Promise<NetworkStats> {
   if (statsCache && Date.now() < statsCache.expiresAt) {

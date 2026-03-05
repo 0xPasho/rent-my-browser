@@ -32,7 +32,7 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
       container: containerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
       projection: "globe",
-      center: [20, 30],
+      center: [-95, 35],
       zoom: 1.3,
       interactive: true,
       dragRotate: true,
@@ -159,12 +159,12 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
     });
 
     // Auto-rotate (pauses when user drags, resumes after)
-    let lng = 20;
+    let lng = -95;
     const rotate = () => {
       if (!userInteracting.current) {
         lng += ROTATION_SPEED;
         if (lng > 180) lng -= 360;
-        map.setCenter([lng, 30]);
+        map.setCenter([lng, 35]);
       }
       frameRef.current = requestAnimationFrame(rotate);
     };
