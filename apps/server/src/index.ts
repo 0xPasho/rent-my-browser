@@ -34,10 +34,17 @@ const authLimiter = rateLimit({
 });
 
 // CORS — manual handler for Express 5 compatibility
+function isAllowedOrigin(origin: string): boolean {
+  return (
+    origin === "https://rentmybrowser.dev" ||
+    origin.endsWith(".rentmybrowser.dev")
+  );
+}
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (env.NODE_ENV === "production") {
-    if (origin === env.DASHBOARD_URL) {
+    if (origin && isAllowedOrigin(origin)) {
       res.setHeader("Access-Control-Allow-Origin", origin);
     }
   } else if (origin) {
