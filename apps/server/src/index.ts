@@ -16,6 +16,8 @@ export const logger = pino({
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 // Rate limiting
 const publicLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -46,8 +48,6 @@ function isAllowedOrigin(origin: string): boolean {
     origin.endsWith(".rentmybrowser.dev")
   );
 }
-
-app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
