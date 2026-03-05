@@ -61,6 +61,9 @@ importers:
       postgres:
         specifier: ^3.4.5
         version: 3.4.8
+      postmark:
+        specifier: ^4.0.7
+        version: 4.0.7
       stripe:
         specifier: ^20.4.0
         version: 20.4.0(@types/node@25.3.3)
@@ -5944,6 +5947,9 @@ packages:
   postgres@3.4.8:
     resolution: {integrity: sha512-d+JFcLM17njZaOLkv6SCev7uoLaBtfK86vMUXhW1Z4glPWh4jozno9APvW/XKFJ3CCxVoC7OL38BqRydtu5nGg==}
     engines: {node: '>=12'}
+
+  postmark@4.0.7:
+    resolution: {integrity: sha512-DjNniUl1XNCGUKhCR98ePd5gv16rlUAVKKaU9TUqnE3hDSqfT9XDulu1idjagQmdyGscqnRtXk/puAEiYMeevg==}
 
   potpack@2.1.0:
     resolution: {integrity: sha512-pcaShQc1Shq0y+E7GqJqvZj8DTthWV1KeHGdi0Z6IAin2Oi3JnLCOfwnCo84qc+HAp52wT9nK9H7FAJp5a44GQ==}
@@ -14698,6 +14704,12 @@ snapshots:
       source-map-js: 1.2.1
 
   postgres@3.4.8: {}
+
+  postmark@4.0.7:
+    dependencies:
+      axios: 1.13.6
+    transitivePeerDependencies:
+      - debug
 
   potpack@2.1.0: {}
 
