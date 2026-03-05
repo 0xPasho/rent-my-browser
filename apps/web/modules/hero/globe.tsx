@@ -14,8 +14,10 @@ interface GlobeProps {
 }
 
 export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
-  const nodeCountries = countries;
-  const nodeLocations = locations;
+  const countriesRef = useRef(countries);
+  const locationsRef = useRef(locations);
+  countriesRef.current = countries;
+  locationsRef.current = locations;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const frameRef = useRef<number>(0);
@@ -71,7 +73,7 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
           filter: [
             "in",
             ["get", "iso_3166_1"],
-            ["literal", nodeCountries],
+            ["literal", countriesRef.current],
           ],
           paint: {
             "fill-color": "#10b981",
@@ -90,7 +92,7 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
           filter: [
             "in",
             ["get", "iso_3166_1"],
-            ["literal", nodeCountries],
+            ["literal", countriesRef.current],
           ],
           paint: {
             "line-color": "#10b981",
@@ -106,7 +108,7 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: nodeLocations.map((loc) => ({
+          features: locationsRef.current.map((loc) => ({
             type: "Feature" as const,
             geometry: {
               type: "Point" as const,
@@ -212,7 +214,7 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
       const countryFilter = [
         "in",
         ["get", "iso_3166_1"],
-        ["literal", nodeCountries],
+        ["literal", countriesRef.current],
       ] as mapboxgl.FilterSpecification;
 
       if (map!.getLayer("node-countries-fill")) {
@@ -226,7 +228,7 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
       if (source) {
         source.setData({
           type: "FeatureCollection",
-          features: nodeLocations.map((loc) => ({
+          features: locationsRef.current.map((loc) => ({
             type: "Feature" as const,
             geometry: {
               type: "Point" as const,
@@ -247,7 +249,7 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
       map.once("style.load", applyData);
       return () => { map.off("style.load", applyData); };
     }
-  }, [nodeCountries, nodeLocations]);
+  }, [countries, locations]);
 
   return (
     <div className="relative aspect-square w-full overflow-hidden rounded-2xl">
