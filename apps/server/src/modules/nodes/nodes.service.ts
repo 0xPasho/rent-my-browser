@@ -17,6 +17,7 @@ export async function createNodeOperator(
   walletAddress: string,
   nodeType: "headless" | "real",
 ) {
+  walletAddress = walletAddress.toLowerCase();
   // Check if wallet already has an account
   const existingAccount = await db
     .select({ id: accounts.id })

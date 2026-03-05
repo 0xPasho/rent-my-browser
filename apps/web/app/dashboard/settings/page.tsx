@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -88,8 +89,10 @@ export default function SettingsPage() {
       const data = await res.json();
       setApiKey(data.api_key);
       setApiKeyVisible(true);
+      toast.success("API key revealed");
     } catch (err: any) {
       setApiKeyError(err.message);
+      toast.error(err.message);
     } finally {
       setApiKeyLoading(false);
     }
@@ -116,9 +119,11 @@ export default function SettingsPage() {
       }
       setOtpSent(true);
       setEmailStatus("otp-sent");
+      toast.success("Verification code sent to your email");
     } catch (err: any) {
       setEmailStatus("error");
       setEmailError(err.message);
+      toast.error(err.message);
     }
   }
 
@@ -153,10 +158,12 @@ export default function SettingsPage() {
       setOtpSent(false);
       setOtp("");
       setEmailStatus("saved");
+      toast.success("Email updated");
       setTimeout(() => setEmailStatus("idle"), 2000);
     } catch (err: any) {
       setEmailStatus("error");
       setEmailError(err.message);
+      toast.error(err.message);
     }
   }
 
@@ -204,9 +211,11 @@ export default function SettingsPage() {
 
       setAccount((prev) => (prev ? { ...prev, walletAddress } : prev));
       setWalletStatus("idle");
+      toast.success("Wallet linked");
     } catch (err: any) {
       setWalletStatus("error");
       setWalletError(err.message ?? "Failed to link wallet");
+      toast.error(err.message ?? "Failed to link wallet");
     }
   }
 
@@ -252,7 +261,10 @@ export default function SettingsPage() {
                 variant="outline"
                 size="sm"
                 className="border-border text-xs"
-                onClick={() => navigator.clipboard.writeText(account.walletAddress!)}
+                onClick={() => {
+                  navigator.clipboard.writeText(account.walletAddress!);
+                  toast.success("Wallet address copied");
+                }}
               >
                 copy
               </Button>
@@ -305,7 +317,10 @@ export default function SettingsPage() {
                 variant="outline"
                 size="sm"
                 className="border-border text-xs"
-                onClick={() => navigator.clipboard.writeText(apiKey)}
+                onClick={() => {
+                  navigator.clipboard.writeText(apiKey);
+                  toast.success("API key copied");
+                }}
               >
                 copy
               </Button>

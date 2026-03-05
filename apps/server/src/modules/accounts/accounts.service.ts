@@ -23,9 +23,14 @@ import {
 import { creditBalance, debitBalance } from "../ledger/ledger.service.js";
 import { emailSender } from "../../lib/email.js";
 
+function normalizeAddress(addr: string): string {
+  return addr.toLowerCase();
+}
+
 // --- Registration ---
 
 export async function createConsumerAccount(walletAddress: string) {
+  walletAddress = normalizeAddress(walletAddress);
   const existing = await db
     .select({ id: accounts.id })
     .from(accounts)
@@ -168,6 +173,7 @@ export async function requestWithdrawal(accountId: string, amount: number) {
 // --- Auth challenge/verify ---
 
 export async function createChallenge(walletAddress: string) {
+  walletAddress = normalizeAddress(walletAddress);
   const existing = await db
     .select({ id: accounts.id })
     .from(accounts)
@@ -190,6 +196,7 @@ export async function verifyChallenge(
   walletAddress: string,
   signature: string,
 ) {
+  walletAddress = normalizeAddress(walletAddress);
   const [challenge] = await db
     .select()
     .from(challenges)
@@ -344,6 +351,7 @@ export async function linkWallet(
   walletAddress: string,
   signature: string,
 ) {
+  walletAddress = normalizeAddress(walletAddress);
   // Check if wallet is already taken
   const [existing] = await db
     .select({ id: accounts.id })
