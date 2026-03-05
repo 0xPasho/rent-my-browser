@@ -156,6 +156,14 @@ export async function estimateTask(
       };
     }
 
+    // If tier is headless but no headless nodes are online, use real nodes instead
+    if (parsed.tier === "headless") {
+      const availability = await getNodeAvailability();
+      if (availability.headless_online === 0 && availability.real_online > 0) {
+        parsed.tier = "real";
+      }
+    }
+
     return parsed;
   } catch (err) {
     console.error("AI estimation failed, using fallback:", err);
@@ -187,11 +195,11 @@ const UNSAFE_PATTERNS = [
   /\bcat\s+.*state\//i,
 ];
 
-function fallbackEstimate(
+async function fallbackEstimate(
   goal: string,
   requestedTier?: "headless" | "real" | "auto",
   requestedMode?: "simple" | "adversarial",
-): TaskEstimate {
+): Promise<TaskEstimate> {
   const goalLower = goal.toLowerCase();
 
   // Safety check even in fallback mode
