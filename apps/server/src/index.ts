@@ -22,7 +22,10 @@ const publicLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "RATE_LIMITED", message: "Too many requests, try again later" },
+  message: {
+    error: "RATE_LIMITED",
+    message: "Too many requests, try again later",
+  },
 });
 
 const authLimiter = rateLimit({
@@ -30,7 +33,10 @@ const authLimiter = rateLimit({
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "RATE_LIMITED", message: "Too many requests, try again later" },
+  message: {
+    error: "RATE_LIMITED",
+    message: "Too many requests, try again later",
+  },
 });
 
 // CORS — manual handler for Express 5 compatibility
@@ -40,6 +46,8 @@ function isAllowedOrigin(origin: string): boolean {
     origin.endsWith(".rentmybrowser.dev")
   );
 }
+
+app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -51,7 +59,10 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+  );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
@@ -60,7 +71,12 @@ app.use((req, res, next) => {
   }
   next();
 });
-app.use(pinoHttp({ logger, autoLogging: { ignore: (req: any) => req.url === "/health" } }));
+app.use(
+  pinoHttp({
+    logger,
+    autoLogging: { ignore: (req: any) => req.url === "/health" },
+  }),
+);
 
 // Stripe webhook needs raw body — must be before express.json()
 app.use("/webhook/stripe", express.raw({ type: "application/json" }));
@@ -86,7 +102,10 @@ app.use(
   ) => {
     if ("statusCode" in err && typeof (err as any).statusCode === "number") {
       const appErr = err as any;
-      logger.warn({ err: appErr, statusCode: appErr.statusCode }, appErr.message);
+      logger.warn(
+        { err: appErr, statusCode: appErr.statusCode },
+        appErr.message,
+      );
       res.status(appErr.statusCode).json({
         error: appErr.code,
         message: appErr.message,
