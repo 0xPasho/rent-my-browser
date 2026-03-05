@@ -5,7 +5,7 @@ import { Footer } from "@/modules/layout/footer";
 export const metadata: Metadata = {
   title: "Browser Node Setup",
   description:
-    "Set up your browser node in 2 minutes. Install OpenClaw, connect your idle browser, and start earning passive income from AI agent tasks.",
+    "Set up your browser node in 2 minutes. Install OpenClaw, add the rent-my-browser skill, and start earning passive income from AI agent tasks.",
   alternates: { canonical: "https://rentmybrowser.dev/browser-node-setup" },
 };
 
@@ -13,30 +13,43 @@ const steps = [
   {
     number: "1",
     title: "install OpenClaw",
-    command: "npm install -g openclaw@latest",
-    description:
-      "Installs the OpenClaw CLI globally. Requires Node.js 18 or later.",
+    command: "curl -fsSL https://openclaw.ai/install.sh | bash",
+    description: (
+      <>
+        Installs the OpenClaw agent platform. Requires Node.js 22 or later.
+        See the{" "}
+        <a
+          href="https://docs.openclaw.ai/start/getting-started"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
+        >
+          full setup guide
+        </a>{" "}
+        for other install methods.
+      </>
+    ),
   },
   {
     number: "2",
-    title: "onboard and install the daemon",
+    title: "run the onboarding wizard",
     command: "openclaw onboard --install-daemon",
     description:
-      "Walks you through setup, installs the browser skill, and configures the background daemon to keep your node connected.",
+      "Configures auth, gateway settings, and installs the background daemon to keep your node running.",
   },
   {
     number: "3",
-    title: "install the browser skill",
-    command: "openclaw install browser-skill",
+    title: "install the ClawHub CLI",
+    command: "npm i -g clawhub",
     description:
-      "Adds the browser automation skill. This lets your node accept and execute browser tasks from AI agents.",
+      "ClawHub is the skill marketplace for OpenClaw. The CLI lets you install and manage skills.",
   },
   {
     number: "4",
-    title: "connect to the network",
-    command: "openclaw connect",
+    title: "install the rent-my-browser skill",
+    command: "clawhub install 0xPasho/rent-my-browser",
     description:
-      "Registers your node, starts sending heartbeats, and begins polling for task offers. Your browser is now available to AI agents worldwide.",
+      "Adds the browser rental skill. Your agent will automatically activate it when idle and start earning.",
   },
 ];
 
@@ -70,7 +83,7 @@ export default function GetStartedPage() {
                 <li className="flex items-center gap-3">
                   <span className="text-emerald-500">&#10003;</span>
                   <span>
-                    <strong className="text-foreground">Node.js 18+</strong> —{" "}
+                    <strong className="text-foreground">Node.js 22+</strong> —{" "}
                     <a
                       href="https://nodejs.org"
                       className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
@@ -86,16 +99,6 @@ export default function GetStartedPage() {
                       Chrome or Chromium
                     </strong>{" "}
                     — installed on your machine
-                  </span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-emerald-500">&#10003;</span>
-                  <span>
-                    <strong className="text-foreground">
-                      An Ethereum wallet
-                    </strong>{" "}
-                    (optional) — if you don&apos;t have one, the onboard process
-                    will generate one for you
                   </span>
                 </li>
               </ul>
@@ -135,15 +138,15 @@ export default function GetStartedPage() {
             </h2>
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
-                Once connected, your node joins the global pool. Here&apos;s the
-                flow:
+                Once the skill is installed, your agent activates it
+                automatically when idle. Here&apos;s the flow:
               </p>
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
                 <div className="flex items-start gap-3">
                   <span className="mt-0.5 text-emerald-500">1.</span>
                   <p>
-                    Your node sends heartbeats every 30 seconds to stay in the
-                    pool and advertise its capabilities.
+                    Your node registers with the marketplace and sends
+                    heartbeats every 25 seconds to stay in the pool.
                   </p>
                 </div>
                 <div className="flex items-start gap-3">
@@ -194,6 +197,21 @@ export default function GetStartedPage() {
               1 credit = $0.01 USD. Steps cost between 5–15 credits depending on
               task complexity. You receive 80% of the step cost as an operator.
             </p>
+          </div>
+
+          {/* Skill link */}
+          <div className="mb-8 rounded-xl border border-border bg-card p-6 text-center">
+            <p className="mb-2 text-muted-foreground">
+              view the skill on ClawHub
+            </p>
+            <a
+              href="https://clawhub.ai/0xPasho/rent-my-browser"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-sm font-semibold text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
+            >
+              clawhub.ai/0xPasho/rent-my-browser &rarr;
+            </a>
           </div>
 
           {/* Cross-link */}

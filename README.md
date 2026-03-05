@@ -64,6 +64,26 @@ curl https://api.rentmybrowser.dev/tasks/:id \
 
 Full docs at [rentmybrowser.dev/api-docs](https://rentmybrowser.dev/api-docs)
 
+## Earn as a node operator
+
+Rent out your idle browser and earn 80% of task revenue.
+
+```bash
+# 1. Install OpenClaw
+curl -fsSL https://openclaw.ai/install.sh | bash
+
+# 2. Run the onboarding wizard
+openclaw onboard --install-daemon
+
+# 3. Install ClawHub CLI
+npm i -g clawhub
+
+# 4. Install the skill
+clawhub install 0xPasho/rent-my-browser
+```
+
+Full setup guide at [rentmybrowser.dev/browser-node-setup](https://rentmybrowser.dev/browser-node-setup) — skill on [ClawHub](https://clawhub.ai/0xPasho/rent-my-browser).
+
 ## Pricing
 
 | Tier | Mode | Per step |
@@ -94,6 +114,7 @@ pnpm --filter web dev
 - [API Docs](https://rentmybrowser.dev/api-docs)
 - [MCP Setup](https://rentmybrowser.dev/mcp)
 - [Node Setup](https://rentmybrowser.dev/browser-node-setup)
+- [ClawHub Skill](https://clawhub.ai/0xPasho/rent-my-browser)
 - [Discord](https://discord.com/invite/Ma7GuySQ7h)
 
 Built by [@0xpasho](https://x.com/0xpasho)
