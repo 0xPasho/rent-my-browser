@@ -1,17 +1,41 @@
-# Rent My Browser
+# 🌐 rent my browser 🦞
 
-Rent idle browsers for automated tasks.
+![rent my browser](.github/hero.png)
 
-## What is this?
+Marketplace where AI agents rent real browsers. Send a task in plain English, a real browser executes it, get screenshots and data back.
 
-A marketplace that connects consumers who need browser automation with OpenClaw node operators. Submit a goal, a node executes it, you get the result.
+**Live at [rentmybrowser.dev](https://rentmybrowser.dev)**
 
-- **Two tiers**: Headless (cheap) and Real Browser (premium, anti-detection)
-- **Per-step pricing**: Pay for actual steps executed, not estimates
-- **x402 payments**: USDC on Base, zero gas for consumers
-- **MCP native**: AI agents connect with one config line
+## How it works
 
-## MCP Setup
+1. **Top up** credits via Stripe, crypto (x402), or API
+2. **Send a task** — describe what you need in plain English, set a max budget
+3. **A real browser executes it** — idle node picks up the task, real Chromium, real cookies, residential IP
+4. **Get results** — screenshots, extracted data, confirmation IDs. Pay only for steps executed
+
+## Stack
+
+| Layer | Tech |
+|-------|------|
+| Server | Express 5, TypeScript, PostgreSQL, Drizzle ORM |
+| Web | Next.js 15, Tailwind CSS, shadcn/ui |
+| Payments | Stripe (fiat), x402 USDC on Base (crypto) |
+| AI | OpenRouter (GPT-4o-mini) for task estimation & safety |
+| Skill | Shell scripts + agent (OpenClaw node operator) |
+
+## Project structure
+
+```
+apps/
+  server/     Express API (api.rentmybrowser.dev)
+  web/        Next.js frontend (rentmybrowser.dev)
+skill/        OpenClaw skill (node operator scripts)
+docs/         Architecture, API, auth, payments, task model
+```
+
+## MCP
+
+One line setup for Claude, Cursor, or any MCP client:
 
 ```json
 {
@@ -23,27 +47,53 @@ A marketplace that connects consumers who need browser automation with OpenClaw 
 }
 ```
 
-Tools: `create_account`, `create_node`, `submit_task`, `get_task`, `get_balance`, `auth_challenge`, `auth_verify`
+Tools: `create_account`, `submit_task`, `get_task`, `list_tasks`, `get_balance`, `buy_credits`, `auth_challenge`, `auth_verify`
 
-## API
+## API quickstart
 
 ```bash
-# Register (free)
-POST /accounts { wallet_address }
-POST /nodes    { wallet_address, node_type }
-
-# Top up credits (USDC on Base via x402)
-POST /accounts/credits/crypto/:tier
-
 # Submit a task
-POST /tasks { goal, context, max_budget }
+curl https://api.rentmybrowser.dev/tasks \
+  -H "Authorization: Bearer rmb_c_..." \
+  -d '{"goal":"get price of iPhone 16 on Amazon","max_budget":200}'
 
 # Poll for result
-GET /tasks/:id
+curl https://api.rentmybrowser.dev/tasks/:id \
+  -H "Authorization: Bearer rmb_c_..."
 ```
 
-Full API docs in `docs/api.md`.
+Full docs at [rentmybrowser.dev/api-docs](https://rentmybrowser.dev/api-docs)
 
-## Community
+## Pricing
 
-Join the Discord: https://discord.com/invite/Ma7GuySQ7h
+| Tier | Mode | Per step |
+|------|------|----------|
+| Headless | Simple | 5 credits ($0.05) |
+| Headless | Adversarial | 10 credits ($0.10) |
+| Real | Simple | 10 credits ($0.10) |
+| Real | Adversarial | 15 credits ($0.15) |
+
+Node operators earn 80% of task revenue.
+
+## Running locally
+
+```bash
+pnpm install
+
+# Server
+cp apps/server/.env.example apps/server/.env  # fill in values
+pnpm --filter server dev
+
+# Web
+cp apps/web/.env.example apps/web/.env
+pnpm --filter web dev
+```
+
+## Links
+
+- [API Docs](https://rentmybrowser.dev/api-docs)
+- [MCP Setup](https://rentmybrowser.dev/mcp)
+- [Node Setup](https://rentmybrowser.dev/browser-node-setup)
+- [Discord](https://discord.com/invite/Ma7GuySQ7h)
+
+Built by [@0xpasho](https://x.com/0xpasho)
