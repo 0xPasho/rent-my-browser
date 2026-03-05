@@ -10,6 +10,11 @@ rmb_load_state || true
 
 rmb_log INFO "Disconnecting from marketplace..."
 
+# ── Remove cron job ─────────────────────────────────────────────────────────
+openclaw cron remove --name "rmb-task-poll" 2>/dev/null \
+  && rmb_log INFO "Cron job 'rmb-task-poll' removed" \
+  || true
+
 # ── Stop poll-loop if running ───────────────────────────────────────────────
 PID_FILE="$STATE_DIR/poll-loop.pid"
 if [ -f "$PID_FILE" ]; then

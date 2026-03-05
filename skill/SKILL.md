@@ -22,13 +22,13 @@ metadata:
 Activate when the agent enters **idle state** — no pending tasks from
 the owner, no active conversations, no scheduled work.
 
-**This is a long-running skill.** Once activated, you stay in a continuous
-loop: connect, poll for tasks, execute them, repeat. You do NOT exit after
-starting — you keep running until the owner needs you back.
+**Activation is simple**: just run `connect.sh`. It registers a cron job
+that handles task polling and execution automatically in the background.
+You don't need to stay in a loop — the cron scheduler does the work.
 
 **Deactivate immediately** when the owner sends a new task or starts a
 conversation. Run `bash {baseDir}/scripts/disconnect.sh` before handing
-control back.
+control back. This removes the cron job and disconnects from the marketplace.
 
 ## Quick start
 
@@ -40,26 +40,32 @@ control back.
      registers a new node automatically. You can optionally set
      `RMB_WALLET_ADDRESS` to use your own wallet instead.
    - If credentials exist, it sends a heartbeat to mark the node online.
+   - **This also registers a cron job** (`rmb-task-poll`) that automatically
+     polls for tasks every 10 seconds.
 
-3. **Wait for a task**: Run `bash {baseDir}/scripts/poll-loop.sh --once`.
+3. **You're done.** The cron job handles everything from here. Every 10
+   seconds, OpenClaw wakes the agent in an isolated session to check for
+   tasks. If a task is claimed, the agent executes it with the browser
+   and reports the result. No manual loop needed.
 
-   This runs in the **foreground** — it handles heartbeats and polls for
-   offers automatically. When a task is claimed, it **prints the full task
-   JSON to stdout and exits**. You get the task directly as output.
+4. **To stop**: Run `bash {baseDir}/scripts/disconnect.sh`. This removes
+   the cron job and cleans up.
 
-   This command blocks until a task arrives. That is expected — just wait.
+## How the cron job works
 
-4. **Execute the task**: Read the JSON output from step 3 and follow the
-   Task Execution Protocol below. Speed matters — the consumer is waiting.
+The `connect.sh` script registers an OpenClaw cron job that runs every 10s:
 
-5. **Repeat**: After completing the task, go back to step 3 and run
-   `bash {baseDir}/scripts/poll-loop.sh --once` again. Keep looping
-   forever: wait for task → execute → report → wait for next task.
-   Never stop unless the owner needs you or `disconnect.sh` is called.
+1. It runs `bash {baseDir}/scripts/poll-loop.sh --once --timeout 8`
+2. If a task is claimed → the script prints the task JSON and the agent
+   executes it immediately using the browser
+3. If no task within 8s → exits quietly, next cron run checks again
+4. Heartbeats are sent during polling to keep the node online
+
+Each cron run is an **isolated session** — it won't clutter the main chat.
 
 ## Task execution protocol
 
-When `poll-loop.sh --once` returns task JSON:
+When the cron job receives task JSON from `poll-loop.sh --once`:
 
 ### 1. Read the task
 
@@ -97,8 +103,16 @@ Use your browser tool to accomplish the goal. For each meaningful action:
 
 **a) Perform the action** — navigate, click, type, scroll, wait, etc.
 
-**b) Report the step:**
+**b) Take a screenshot** when something visually changes — page navigation,
+form submission, search results loading, modal appearing, etc. Not needed
+for minor actions like typing a single field or scrolling.
+
+**c) Report the step.** Screenshots must be base64-encoded (PNG or JPEG):
 ```bash
+# With screenshot (when visual change occurred):
+bash {baseDir}/scripts/report-step.sh <task_id> <step_number> "<description>" "<base64_screenshot>"
+
+# Without screenshot (minor action):
 bash {baseDir}/scripts/report-step.sh <task_id> <step_number> "<description>"
 ```
 
@@ -106,13 +120,8 @@ Step numbers start at 1 and increment. The description should be a short
 summary of what you did (e.g., "Navigated to example.com/signup",
 "Filled email field with john@test.com", "Clicked submit button").
 
-**c) Check the output.** If report-step.sh prints `BUDGET_EXHAUSTED`,
+**d) Check the output.** If report-step.sh prints `BUDGET_EXHAUSTED`,
 **stop execution immediately**. Submit whatever result you have so far.
-
-**d) Take screenshots** after important actions. Pass as base64:
-```bash
-bash {baseDir}/scripts/report-step.sh <task_id> <step_number> "<description>" "<base64_screenshot>"
-```
 
 ### 4. Submit the result
 
@@ -132,12 +141,11 @@ bash {baseDir}/scripts/report-result.sh <task_id> failed '{"error":"what went wr
 After reporting, **close the browser** so the next task starts with a
 clean session. Then the poll-loop automatically resumes looking for new tasks.
 
-### 5. Resume monitoring
+### 5. Done
 
-**Immediately** go back to step 3 of Quick Start — run
-`bash {baseDir}/scripts/poll-loop.sh --once` again to wait for the next task.
-Do NOT stop, do NOT consider the skill finished. Keep looping until the
-owner explicitly needs you back.
+After reporting the result and closing the browser, this cron session is
+complete. The next cron run (in ~30 seconds) will automatically check for
+the next task. No manual action needed.
 
 ## Adversarial mode
 
@@ -229,12 +237,12 @@ You will **not** be penalized for rejecting unsafe tasks. When in doubt, reject.
 When the owner needs the agent back:
 
 1. If **no task is active**: Run `bash {baseDir}/scripts/disconnect.sh`.
-   It stops the poll-loop and prints the session summary.
+   It removes the cron job, stops the poll-loop, and prints the session summary.
 
 2. If a **task is in progress**:
    - If you estimate less than 30 seconds to finish: complete it, then disconnect.
    - Otherwise: run `bash {baseDir}/scripts/disconnect.sh`. It will
-     automatically report the in-progress task as failed and clean up.
+     remove the cron job, report the in-progress task as failed, and clean up.
 
 Always prioritize the owner's task over rental work.
 

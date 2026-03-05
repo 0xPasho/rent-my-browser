@@ -13,8 +13,8 @@ router.get("/health", (_req, res) => {
 });
 
 router.get("/stats", async (_req, res) => {
-  const stats = await getNetworkStats();
-  res.json(stats);
+  const { headless_nodes, real_nodes, ...publicStats } = await getNetworkStats();
+  res.json(publicStats);
 });
 
 router.use(accountsRoutes);

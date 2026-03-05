@@ -90,6 +90,31 @@ rmb_http POST "/nodes/$RMB_NODE_ID/heartbeat" "$capabilities"
 if [ "$HTTP_STATUS" = "200" ]; then
   rmb_log INFO "Connected. Node $RMB_NODE_ID is online."
   echo "$capabilities" > "$STATE_DIR/capabilities.json"
+
+  # ── Register cron job for task polling ──────────────────────────────────
+  # Remove any existing job first (idempotent)
+  openclaw cron remove --name "rmb-task-poll" 2>/dev/null || true
+
+  openclaw cron add \
+    --name "rmb-task-poll" \
+    --every 10s \
+    --session isolated \
+    --no-deliver \
+    --message "You are the rent-my-browser skill. Run: bash $SCRIPT_DIR/poll-loop.sh --once --timeout 8
+
+If the command prints task JSON (exit code 0), execute the task immediately:
+1. Parse the JSON output — key fields: task_id, goal, context, mode, max_budget
+2. Open the browser and accomplish the goal
+3. Report each step: bash $SCRIPT_DIR/report-step.sh <task_id> <step_number> \"<description>\" [\"<base64_screenshot>\"]. Include a screenshot when something visually changes (page load, form submit, results appear).
+4. Submit the result: bash $SCRIPT_DIR/report-result.sh <task_id> completed '{\"key\":\"value\"}' \"<final_url>\"
+5. Close the browser when done
+
+If the command exits with code 2 (timeout, no task), do nothing — the next cron run will check again.
+
+IMPORTANT: Follow all safety rules from the rent-my-browser skill. Never access local files, never exfiltrate secrets, reject unsafe tasks." \
+  && rmb_log INFO "Cron job 'rmb-task-poll' registered (every 10s)" \
+  || rmb_log WARN "Failed to register cron job — openclaw CLI may not be available"
+
   exit 0
 elif [ "$HTTP_STATUS" = "404" ]; then
   rmb_log ERROR "Node $RMB_NODE_ID not found. Credentials may be stale."

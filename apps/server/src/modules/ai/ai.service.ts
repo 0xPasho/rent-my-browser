@@ -1,4 +1,5 @@
 import { env } from "../../env.js";
+import { getNetworkStats } from "../nodes/nodes.service.js";
 
 export interface TaskEstimate {
   safe: boolean;
@@ -230,11 +231,19 @@ function fallbackEstimate(
   const botDetectionLevel = hasBotDetection ? "high" : "none";
   const requiresResidentialIp = hasBotDetection;
 
-  // Determine tier
+  // Determine tier based on request + availability
   let tier: "headless" | "real" =
     requestedTier && requestedTier !== "auto" ? requestedTier : "headless";
   if (hasBotDetection && tier === "headless") {
     tier = "real";
+  }
+
+  // If tier is headless but no headless nodes exist, use real nodes instead
+  if (tier === "headless") {
+    const stats = await getNetworkStats();
+    if (stats.headless_nodes === 0 && stats.real_nodes > 0) {
+      tier = "real";
+    }
   }
 
   // Determine mode

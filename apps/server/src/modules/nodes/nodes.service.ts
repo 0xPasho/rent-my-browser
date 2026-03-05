@@ -235,6 +235,8 @@ export async function updateNodeScore(
 
 interface NetworkStats {
   online_nodes: number;
+  headless_nodes: number;
+  real_nodes: number;
   countries: string[];
   locations: { country: string; city: string; lng: number; lat: number; nodes: number }[];
 }
@@ -247,9 +249,13 @@ export async function getNetworkStats(): Promise<NetworkStats> {
     return statsCache.data;
   }
 
-  // Count all registered nodes
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
+  // Count all registered nodes by type
+  const [{ count, headless_count, real_count }] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+      headless_count: sql<number>`count(*) filter (where type = 'headless')::int`,
+      real_count: sql<number>`count(*) filter (where type = 'real')::int`,
+    })
     .from(nodes);
 
   // Group by country/city for location data
@@ -288,6 +294,8 @@ export async function getNetworkStats(): Promise<NetworkStats> {
 
   const data: NetworkStats = {
     online_nodes: count,
+    headless_nodes: headless_count,
+    real_nodes: real_count,
     countries: Array.from(countrySet),
     locations,
   };
