@@ -9,7 +9,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 interface Account {
   id: string;
   type: "consumer" | "operator";
-  walletAddress: string;
+  walletAddress: string | null;
   email: string | null;
   balance: number;
   totalSpent: number;

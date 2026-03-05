@@ -256,6 +256,7 @@ export async function getTask(taskId: string, accountId: string) {
 
   return {
     task_id: task.id,
+    goal: task.goal,
     status: task.status,
     tier: task.tier,
     mode: task.mode,

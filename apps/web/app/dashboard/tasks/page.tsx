@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
@@ -31,6 +32,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function TasksPage() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,7 +106,8 @@ export default function TasksPage() {
               {tasks.map((task) => (
                 <tr
                   key={task.task_id}
-                  className="border-b border-border/50 last:border-0"
+                  onClick={() => router.push(`/dashboard/tasks/${task.task_id}`)}
+                  className="cursor-pointer border-b border-border/50 last:border-0 hover:bg-secondary/50 transition-colors"
                 >
                   <td className="max-w-xs truncate px-4 py-3 text-xs text-foreground">
                     {task.goal}

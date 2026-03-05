@@ -9,7 +9,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 interface Account {
   id: string;
   type: "consumer" | "operator";
-  walletAddress: string;
+  walletAddress: string | null;
   email: string | null;
   balance: number;
   totalSpent: number;
@@ -114,13 +114,15 @@ export default function DashboardOverview() {
               <span className="text-muted-foreground">type</span>
               <span className="font-mono font-medium">{account.type}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">wallet</span>
-              <span className="font-mono text-xs">
-                {account.walletAddress.slice(0, 6)}...
-                {account.walletAddress.slice(-4)}
-              </span>
-            </div>
+            {account.walletAddress && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">wallet</span>
+                <span className="font-mono text-xs">
+                  {account.walletAddress.slice(0, 6)}...
+                  {account.walletAddress.slice(-4)}
+                </span>
+              </div>
+            )}
             {account.email && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">email</span>

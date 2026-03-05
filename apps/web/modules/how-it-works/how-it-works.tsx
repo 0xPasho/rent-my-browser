@@ -114,12 +114,12 @@ export function HowItWorks() {
                 your machine works.{" "}
                 <span className="text-muted-foreground">you get paid.</span>
               </h2>
-              <p className="mb-8 max-w-lg text-base text-muted-foreground md:text-lg">
+              <p className="mx-auto mb-8 max-w-lg text-base text-muted-foreground md:text-lg lg:mx-0">
                 Connect your OpenClaw and start earning. AI agents need
                 real browsers for tasks that headless can&apos;t handle.
               </p>
 
-              <div className="space-y-5">
+              <div className="mx-auto max-w-sm space-y-5 text-left lg:mx-0 lg:max-w-none">
                 {useCases.map((uc) => (
                   <div key={uc.title} className="flex items-start gap-3">
                     <span className="mt-1 text-emerald-500">&#8226;</span>
