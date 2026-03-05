@@ -256,7 +256,7 @@ const stripeSchema = z.object({
   amount: z
     .number()
     .positive("Amount must be positive")
-    .min(5, "Minimum top-up is $5")
+    .min(1, "Minimum top-up is $1")
     .max(500, "Maximum top-up is $500"),
 });
 

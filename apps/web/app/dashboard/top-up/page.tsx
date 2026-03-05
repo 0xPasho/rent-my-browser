@@ -39,7 +39,7 @@ export default function TopUpPage() {
 
   const dollars = parseFloat(amount) || 0;
   const credits = Math.round(dollars * 100);
-  const isValid = dollars >= 5 && dollars <= 500;
+  const isValid = dollars >= 1 && dollars <= 500;
 
   async function handlePurchase() {
     const token = getToken();
@@ -125,7 +125,7 @@ export default function TopUpPage() {
             </span>
             <Input
               type="number"
-              min="5"
+              min="1"
               max="500"
               step="1"
               value={amount}
@@ -134,9 +134,9 @@ export default function TopUpPage() {
               placeholder="10"
             />
           </div>
-          {dollars > 0 && dollars < 5 && (
+          {dollars > 0 && dollars < 1 && (
             <p className="mt-1 font-mono text-[10px] text-red-400">
-              minimum $5
+              minimum $1
             </p>
           )}
           {dollars > 500 && (
@@ -148,7 +148,7 @@ export default function TopUpPage() {
 
         {/* Quick amounts */}
         <div className="mb-6 flex gap-2">
-          {[5, 10, 25, 50, 100].map((v) => (
+          {[1, 5, 10, 25, 50, 100].map((v) => (
             <button
               key={v}
               onClick={() => setAmount(String(v))}
