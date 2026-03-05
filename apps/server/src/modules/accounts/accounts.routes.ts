@@ -5,6 +5,7 @@ import { paymentMiddleware } from "@x402/express";
 import { env, BASE_CHAIN_ID, isSandbox } from "../../env.js";
 import { x402Server } from "../../lib/x402.js";
 import { stripe } from "../../lib/stripe.js";
+import { logger } from "../../index.js";
 import { auth } from "../../middleware/auth.js";
 import { requireType } from "../../middleware/require-type.js";
 import { validate } from "../../middleware/validate.js";
@@ -310,12 +311,21 @@ router.post(
 router.post(
   "/webhook/stripe",
   asyncHandler(async (req, res) => {
+    logger.info("stripe webhook: incoming request");
+
     if (!stripe || !env.STRIPE_WEBHOOK_SECRET) {
+      logger.warn("stripe webhook: not configured (missing stripe or STRIPE_WEBHOOK_SECRET)");
       res.status(501).json({ error: "NOT_CONFIGURED" });
       return;
     }
 
     const sig = req.headers["stripe-signature"] as string;
+    if (!sig) {
+      logger.warn("stripe webhook: missing stripe-signature header");
+      res.status(400).json({ error: "MISSING_SIGNATURE" });
+      return;
+    }
+
     let event;
     try {
       event = stripe.webhooks.constructEvent(
@@ -323,19 +333,42 @@ router.post(
         sig,
         env.STRIPE_WEBHOOK_SECRET,
       );
-    } catch {
+    } catch (err) {
+      logger.error({ err, sigPrefix: sig?.slice(0, 20) }, "stripe webhook: signature verification failed");
       res.status(400).json({ error: "INVALID_SIGNATURE" });
       return;
     }
+
+    logger.info({ eventType: event.type, eventId: event.id }, "stripe webhook: event received");
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       const accountId = session.metadata?.account_id;
       const credits = Number(session.metadata?.credits);
+      const paymentStatus = session.payment_status;
 
-      if (accountId && credits > 0 && session.payment_status === "paid") {
-        await addCredits(accountId, credits, session.id);
+      logger.info(
+        { sessionId: session.id, accountId, credits, paymentStatus, metadata: session.metadata },
+        "stripe webhook: checkout.session.completed",
+      );
+
+      if (!accountId) {
+        logger.warn({ sessionId: session.id, metadata: session.metadata }, "stripe webhook: missing account_id in metadata");
+      } else if (!credits || credits <= 0) {
+        logger.warn({ sessionId: session.id, creditsRaw: session.metadata?.credits }, "stripe webhook: invalid credits value");
+      } else if (paymentStatus !== "paid") {
+        logger.warn({ sessionId: session.id, paymentStatus }, "stripe webhook: payment not paid");
+      } else {
+        try {
+          const result = await addCredits(accountId, credits, session.id);
+          logger.info({ accountId, credits, sessionId: session.id, result }, "stripe webhook: credits added successfully");
+        } catch (err) {
+          logger.error({ err, accountId, credits, sessionId: session.id }, "stripe webhook: failed to add credits");
+          throw err;
+        }
       }
+    } else {
+      logger.info({ eventType: event.type }, "stripe webhook: ignoring unhandled event type");
     }
 
     res.json({ received: true });
