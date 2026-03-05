@@ -39,6 +39,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <script defer src="https://analytics.pasho.dev/script.js" data-website-id="9ec852f2-ea28-427d-88d5-334b9ad864e3" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background font-sans antialiased`}
       >

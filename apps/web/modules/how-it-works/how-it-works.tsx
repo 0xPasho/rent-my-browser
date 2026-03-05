@@ -1,47 +1,7 @@
 import { GlobeWithStats } from "@/modules/hero/globe-with-stats";
 import { Button } from "@/components/ui/button";
-
-const useCases = [
-  {
-    title: "Extract data from protected sites",
-    description:
-      "Prices, listings, reviews — from sites that block scrapers and require real sessions.",
-  },
-  {
-    title: "Fill forms & create accounts",
-    description:
-      "Sign-ups, applications, checkouts — on sites with CAPTCHAs and bot detection.",
-  },
-  {
-    title: "Monitor & automate workflows",
-    description:
-      "Track inventory, check availability, trigger actions — across any website, undetected.",
-  },
-];
-
-const steps = [
-  {
-    number: "01",
-    title: "Submit a task",
-    description:
-      "Send a goal in plain English via API or MCP. Set a budget in credits.",
-    detail: "curl api.rentmybrowser.dev/tasks",
-  },
-  {
-    number: "02",
-    title: "Real browser executes",
-    description:
-      "An idle machine picks up the task. Real Chromium, real cookies, real IP.",
-    detail: "no headless flags, no detection",
-  },
-  {
-    number: "03",
-    title: "Get results back",
-    description:
-      "Screenshots, extracted data, confirmation IDs — delivered to your agent.",
-    detail: "pay only for steps executed",
-  },
-];
+import { BeforeAfter } from "./before-after";
+import { UseCaseExamples } from "./use-case-examples";
 
 const howSteps = [
   {
@@ -69,36 +29,15 @@ const howSteps = [
 export function HowItWorks() {
   return (
     <section id="how-it-works">
-      {/* Steps strip */}
-      <div className="border-b border-border py-16">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="grid gap-0 md:grid-cols-3">
-            {steps.map((step, i) => (
-              <div key={step.number} className="relative px-6 py-6">
-                {i < steps.length - 1 && (
-                  <div className="absolute right-0 top-[2.75rem] hidden h-px w-6 bg-emerald-500/30 md:block" />
-                )}
+      {/* Before / After comparison */}
+      <BeforeAfter />
 
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/30 font-mono text-xs text-emerald-500">
-                    {step.number}
-                  </span>
-                  <h3 className="text-lg font-semibold">{step.title}</h3>
-                </div>
-
-                <p className="mb-2 text-sm leading-relaxed text-muted-foreground">
-                  {step.description}
-                </p>
-                <p className="font-mono text-xs text-emerald-500/60">
-                  {step.detail}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Concrete use case examples */}
+      <div className="border-b border-border">
+        <UseCaseExamples />
       </div>
 
-      {/* Globe + use cases */}
+      {/* Globe + earn section */}
       <div className="py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -108,29 +47,55 @@ export function HowItWorks() {
 
             <div className="text-center lg:text-left">
               <p className="mb-3 font-mono text-sm font-medium uppercase tracking-widest text-emerald-500">
-                what agents use your browser for
+                global browser network
               </p>
               <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">
                 your machine works.{" "}
                 <span className="text-muted-foreground">you get paid.</span>
               </h2>
               <p className="mx-auto mb-8 max-w-lg text-base text-muted-foreground md:text-lg lg:mx-0">
-                Connect your OpenClaw and start earning. AI agents need
-                real browsers for tasks that headless can&apos;t handle.
+                Connect your machine and start earning. AI agents need real
+                browsers for tasks that headless can&apos;t handle. You earn 80%
+                of every task completed on your node.
               </p>
 
-              <div className="mx-auto max-w-sm space-y-5 text-left lg:mx-0 lg:max-w-none">
-                {useCases.map((uc) => (
-                  <div key={uc.title} className="flex items-start gap-3">
-                    <span className="mt-1 text-emerald-500">&#8226;</span>
-                    <div>
-                      <h3 className="text-sm font-semibold">{uc.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {uc.description}
-                      </p>
-                    </div>
+              <div className="mx-auto max-w-sm space-y-4 text-left lg:mx-0 lg:max-w-none">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xs text-emerald-500">
+                    $
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold">Passive income</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Your idle machine earns money while you sleep, work, or
+                      browse.
+                    </p>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xs text-emerald-500">
+                    ~
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold">Zero effort</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Install once with one command. Tasks run automatically in
+                      the background.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-xs text-emerald-500">
+                    !
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold">Safe by design</h3>
+                    <p className="text-sm text-muted-foreground">
+                      All tasks are AI-screened. Malicious, illegal, or harmful
+                      tasks are automatically rejected.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -145,11 +110,14 @@ export function HowItWorks() {
               for AI agents
             </h3>
             <p className="mb-6 text-muted-foreground">
-              MCP integration. REST API. let your agent rent a real browser in
+              MCP integration. REST API. Let your agent rent a real browser in
               one call.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button asChild className="bg-emerald-600 px-6 text-white hover:bg-emerald-500">
+              <Button
+                asChild
+                className="bg-emerald-600 px-6 text-white hover:bg-emerald-500"
+              >
                 <a href="/api-docs">API docs</a>
               </Button>
               <Button
