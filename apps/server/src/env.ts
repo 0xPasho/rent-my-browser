@@ -11,7 +11,8 @@ const envSchema = z.object({
   PLATFORM_WALLET_ADDRESS: z
     .string()
     .default("0x0000000000000000000000000000000000000000"),
-  X402_FACILITATOR_URL: z.string().default("https://www.x402.org/facilitator"),
+  CDP_API_KEY_ID: z.string().min(1),
+  CDP_API_KEY_SECRET: z.string().min(1),
   S3_ENDPOINT: z.string().min(1),
   S3_ACCESS_KEY: z.string().min(1),
   S3_SECRET_KEY: z.string().min(1),
