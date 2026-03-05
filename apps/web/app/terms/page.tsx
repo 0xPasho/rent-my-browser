@@ -3,8 +3,9 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — rent my browser",
-  description: "Terms of Service for rent my browser",
+  title: "Terms of Service",
+  description: "Terms of Service for rent my browser. Rules for using the browser rental marketplace.",
+  alternates: { canonical: "https://rentmybrowser.dev/terms" },
 };
 
 const lastUpdated = "March 3, 2026";

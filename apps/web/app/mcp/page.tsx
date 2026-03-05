@@ -3,9 +3,10 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "MCP Integration — rent my browser",
+  title: "MCP Integration",
   description:
-    "Set up MCP in one line. Your AI agent discovers and rents real browsers automatically.",
+    "Set up MCP in one line. Your AI agent discovers and rents real browsers automatically. Connect Claude, Cursor, or any MCP-compatible client.",
+  alternates: { canonical: "https://rentmybrowser.dev/mcp" },
 };
 
 const tools = [

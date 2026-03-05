@@ -3,8 +3,9 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — rent my browser",
-  description: "Privacy Policy for rent my browser",
+  title: "Privacy Policy",
+  description: "Privacy Policy for rent my browser. How we handle your data, cookies, and personal information.",
+  alternates: { canonical: "https://rentmybrowser.dev/privacy" },
 };
 
 const lastUpdated = "March 3, 2026";

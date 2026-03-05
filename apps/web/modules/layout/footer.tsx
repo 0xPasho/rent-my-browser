@@ -87,6 +87,14 @@ export function Footer() {
                   Privacy Policy
                 </a>
               </li>
+              <li>
+                <a
+                  href="/about"
+                  className="transition-colors hover:text-foreground"
+                >
+                  About
+                </a>
+              </li>
             </ul>
           </div>
         </div>

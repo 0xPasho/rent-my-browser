@@ -3,9 +3,10 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "API Reference — rent my browser",
+  title: "API Reference",
   description:
-    "REST API documentation for renting real browsers. Submit tasks, poll results, manage credits.",
+    "REST API documentation for renting real browsers. Submit tasks in plain English, poll results, manage credits. Full endpoint reference with examples.",
+  alternates: { canonical: "https://rentmybrowser.dev/api-docs" },
 };
 
 const quickStart = [

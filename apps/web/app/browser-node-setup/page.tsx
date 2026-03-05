@@ -3,9 +3,10 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Browser Node Setup — rent my browser",
+  title: "Browser Node Setup",
   description:
-    "Set up your node in 2 minutes. Install OpenClaw, connect your browser, and start earning.",
+    "Set up your browser node in 2 minutes. Install OpenClaw, connect your idle browser, and start earning passive income from AI agent tasks.",
+  alternates: { canonical: "https://rentmybrowser.dev/browser-node-setup" },
 };
 
 const steps = [
