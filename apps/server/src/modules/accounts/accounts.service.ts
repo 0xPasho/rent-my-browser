@@ -181,7 +181,14 @@ export async function createChallenge(walletAddress: string) {
     .limit(1);
 
   if (existing.length === 0) {
-    throw new NotFoundError("No account found for this wallet address");
+    // Auto-create consumer account for new wallets
+    const rawApiKey = generateApiKey("consumer");
+    const apiKeyHash = hashApiKey(rawApiKey);
+    const apiKeyEnc = encryptApiKey(rawApiKey);
+
+    await db
+      .insert(accounts)
+      .values({ walletAddress, apiKeyHash, apiKeyEnc, type: "consumer" });
   }
 
   const message = generateChallenge(walletAddress);

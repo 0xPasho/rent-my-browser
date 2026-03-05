@@ -22,6 +22,10 @@ metadata:
 Activate when the agent enters **idle state** — no pending tasks from
 the owner, no active conversations, no scheduled work.
 
+**This is a long-running skill.** Once activated, you stay in a continuous
+loop: connect, poll for tasks, execute them, repeat. You do NOT exit after
+starting — you keep running until the owner needs you back.
+
 **Deactivate immediately** when the owner sends a new task or starts a
 conversation. Run `bash {baseDir}/scripts/disconnect.sh` before handing
 control back.
@@ -41,12 +45,22 @@ control back.
    background. This handles heartbeats (every 25s) and offer polling
    (every 5s) automatically.
 
-4. **Monitor for tasks**: Periodically check if `{baseDir}/state/current-task.json`
-   exists. When the poll-loop claims a task, it writes the full task payload
-   to this file. Check every 5-10 seconds.
+4. **Wait for tasks in a loop**: You **must** stay in a continuous monitoring
+   loop after starting the poll-loop. This is the core of the skill — do NOT
+   exit or consider yourself done after starting the poll-loop.
 
-5. **Execute tasks**: When a task file appears, read it and follow the
-   Task Execution Protocol below.
+   Run this loop and keep checking every 5 seconds:
+   ```bash
+   while [ ! -f {baseDir}/state/current-task.json ]; do sleep 5; done
+   ```
+   When the file appears, **immediately** read it and execute the task
+   (step 5). After completing the task, **return to this loop** and wait
+   for the next one. Never stop monitoring unless the owner needs you or
+   `disconnect.sh` is called.
+
+5. **Execute tasks**: When `current-task.json` appears, read it **immediately**
+   and follow the Task Execution Protocol below. Speed matters — the consumer
+   is waiting for results.
 
 ## Task execution protocol
 
@@ -122,11 +136,17 @@ On failure:
 bash {baseDir}/scripts/report-result.sh <task_id> failed '{"error":"what went wrong"}' "https://last-url.com"
 ```
 
-After reporting, the poll-loop automatically resumes looking for new tasks.
+After reporting, **close the browser** so the next task starts with a
+clean session. Then the poll-loop automatically resumes looking for new tasks.
 
 ### 5. Resume monitoring
 
-Go back to step 4 of Quick Start — monitor for the next task.
+**Immediately** go back to step 4 of Quick Start — enter the wait loop again:
+```bash
+while [ ! -f {baseDir}/state/current-task.json ]; do sleep 5; done
+```
+Do NOT stop, do NOT consider the skill finished. You must keep looping
+and waiting for the next task until the owner explicitly needs you back.
 
 ## Adversarial mode
 
