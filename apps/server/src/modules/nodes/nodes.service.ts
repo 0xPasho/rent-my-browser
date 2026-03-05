@@ -247,19 +247,17 @@ export async function getNetworkStats(): Promise<NetworkStats> {
     return statsCache.data;
   }
 
-  // Count online nodes
+  // Count all registered nodes
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(nodes)
-    .where(eq(nodes.isOnline, true));
+    .from(nodes);
 
   // Group by country/city for location data
   const rows = await db
     .select({
       geo: nodes.geo,
     })
-    .from(nodes)
-    .where(eq(nodes.isOnline, true));
+    .from(nodes);
 
   // Aggregate by country+city
   const locationMap = new Map<string, { country: string; city: string; nodes: number }>();
