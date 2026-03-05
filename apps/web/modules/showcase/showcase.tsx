@@ -71,7 +71,7 @@ export function Showcase() {
           marketplace. Click to see the full execution.
         </p>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tasks.map((task) => {
             const isExpanded = expandedId === task.task_id;
             const firstScreenshot = task.steps.find((s) => s.screenshot_url);
@@ -98,7 +98,7 @@ export function Showcase() {
 
                 <div className="flex flex-1 flex-col p-5">
                   {/* Goal */}
-                  <p className="mb-3 text-sm font-medium leading-snug text-foreground">
+                  <p className="mb-3 line-clamp-2 text-sm font-medium leading-snug text-foreground">
                     &quot;{task.goal}&quot;
                   </p>
 
@@ -127,8 +127,9 @@ export function Showcase() {
 
                   {/* Extracted data preview */}
                   {Object.keys(task.extracted_data).length > 0 && (
-                    <div className="mb-3 flex-1 rounded-lg bg-background/50 p-3 font-mono text-xs">
+                    <div className="mb-3 flex-1 overflow-hidden rounded-lg bg-background/50 p-3 font-mono text-xs">
                       {Object.entries(task.extracted_data)
+                        .filter(([, value]) => typeof value !== "object" || value === null)
                         .slice(0, 3)
                         .map(([key, value]) => (
                           <div key={key} className="mb-0.5 truncate">
@@ -136,7 +137,7 @@ export function Showcase() {
                               {key}:{" "}
                             </span>
                             <span className="text-emerald-400">
-                              {String(value)}
+                              {String(value ?? "")}
                             </span>
                           </div>
                         ))}
