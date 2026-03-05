@@ -4,11 +4,12 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { accounts } from '../db/schema/accounts.js';
 import { AuthError } from '../lib/errors.js';
+import { verifyDashboardJwt } from '../modules/auth/auth.lib.js';
 
 export interface AuthAccount {
   id: string;
   type: 'consumer' | 'operator';
-  walletAddress: string;
+  walletAddress: string | null;
   balance: number;
 }
 
@@ -24,6 +25,13 @@ function hashApiKey(key: string): string {
   return createHash('sha256').update(key).digest('hex');
 }
 
+const accountFields = {
+  id: accounts.id,
+  type: accounts.type,
+  walletAddress: accounts.walletAddress,
+  balance: accounts.balance,
+};
+
 export const auth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
@@ -31,25 +39,39 @@ export const auth = async (req: Request, _res: Response, next: NextFunction): Pr
     return;
   }
 
-  const apiKey = header.slice(7);
-  const hash = hashApiKey(apiKey);
+  const token = header.slice(7);
 
-  const [account] = await db
-    .select({
-      id: accounts.id,
-      type: accounts.type,
-      walletAddress: accounts.walletAddress,
-      balance: accounts.balance,
-    })
+  // Try API key first
+  const hash = hashApiKey(token);
+  const [byKey] = await db
+    .select(accountFields)
     .from(accounts)
     .where(eq(accounts.apiKeyHash, hash))
     .limit(1);
 
-  if (!account) {
-    next(new AuthError('Invalid API key'));
+  if (byKey) {
+    req.account = byKey;
+    next();
     return;
   }
 
-  req.account = account;
-  next();
+  // Fallback: try JWT session token
+  try {
+    const { accountId } = await verifyDashboardJwt(token);
+    const [byJwt] = await db
+      .select(accountFields)
+      .from(accounts)
+      .where(eq(accounts.id, accountId))
+      .limit(1);
+
+    if (byJwt) {
+      req.account = byJwt;
+      next();
+      return;
+    }
+  } catch {
+    // Not a valid JWT either
+  }
+
+  next(new AuthError('Invalid API key or session token'));
 };

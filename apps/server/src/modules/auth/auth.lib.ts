@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 import { verifyMessage } from "viem";
 import { SignJWT, jwtVerify } from "jose";
 import { nanoid } from "nanoid";
@@ -41,6 +41,29 @@ export function generateChallenge(walletAddress: string): string {
 
 export function generatePaymentMemo(type: "register" | "topup"): string {
   return `${type}_${nanoid(16)}`;
+}
+
+// --- API key encryption (AES-256-GCM) ---
+
+const ENC_KEY = createHash("sha256").update(env.JWT_SECRET).digest(); // 32 bytes
+
+export function encryptApiKey(raw: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", ENC_KEY, iv);
+  const encrypted = Buffer.concat([cipher.update(raw, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  // format: iv:tag:ciphertext (all hex)
+  return `${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+export function decryptApiKey(enc: string): string {
+  const [ivHex, tagHex, dataHex] = enc.split(":");
+  const iv = Buffer.from(ivHex, "hex");
+  const tag = Buffer.from(tagHex, "hex");
+  const data = Buffer.from(dataHex, "hex");
+  const decipher = createDecipheriv("aes-256-gcm", ENC_KEY, iv);
+  decipher.setAuthTag(tag);
+  return decipher.update(data) + decipher.final("utf8");
 }
 
 export async function signDashboardJwt(accountId: string): Promise<string> {

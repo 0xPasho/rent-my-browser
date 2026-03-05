@@ -64,9 +64,10 @@ export const paymentStatusEnum = pgEnum("payment_status", [
 
 export const accounts = pgTable("accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
-  walletAddress: varchar("wallet_address", { length: 42 }).notNull().unique(),
+  walletAddress: varchar("wallet_address", { length: 42 }).unique(),
   email: varchar("email", { length: 255 }).unique(),
   apiKeyHash: varchar("api_key_hash", { length: 128 }).notNull().unique(),
+  apiKeyEnc: varchar("api_key_enc", { length: 256 }),
   type: accountTypeEnum("type").notNull(),
   balance: integer("balance").notNull().default(0),
   totalSpent: integer("total_spent").notNull().default(0),

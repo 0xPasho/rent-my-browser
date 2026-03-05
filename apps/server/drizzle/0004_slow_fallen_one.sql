@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "api_key_enc" varchar(256);

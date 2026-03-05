@@ -8,6 +8,7 @@ import { ValidationError, NotFoundError, AuthError } from "../../lib/errors.js";
 import {
   generateApiKey,
   hashApiKey,
+  encryptApiKey,
   signDashboardJwt,
 } from "../auth/auth.lib.js";
 import { getPricePerStep } from "../tasks/tasks.lib.js";
@@ -42,10 +43,11 @@ export async function createNodeOperator(
 
   const rawApiKey = generateApiKey("operator");
   const apiKeyHash = hashApiKey(rawApiKey);
+  const apiKeyEnc = encryptApiKey(rawApiKey);
 
   const [account] = await db
     .insert(accounts)
-    .values({ walletAddress, apiKeyHash, type: "operator" })
+    .values({ walletAddress, apiKeyHash, apiKeyEnc, type: "operator" })
     .returning({ id: accounts.id });
 
   const [node] = await db

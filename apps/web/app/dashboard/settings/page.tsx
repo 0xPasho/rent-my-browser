@@ -9,7 +9,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 interface Account {
   id: string;
   type: "consumer" | "operator";
-  walletAddress: string;
+  walletAddress: string | null;
   email: string | null;
   balance: number;
   totalSpent: number;
@@ -25,10 +25,25 @@ function getToken() {
 
 export default function SettingsPage() {
   const [account, setAccount] = useState<Account | null>(null);
-  const [email, setEmail] = useState("");
-  const [emailStatus, setEmailStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [emailError, setEmailError] = useState("");
+
+  // API key state
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState("");
+
+  // Wallet state
+  const [walletStatus, setWalletStatus] = useState<"idle" | "connecting" | "signing" | "saving" | "error">("idle");
+  const [walletError, setWalletError] = useState("");
+
+  // Email state
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<
+    "idle" | "sending-otp" | "otp-sent" | "saving" | "saved" | "error"
+  >("idle");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     const token = getToken();
@@ -45,6 +60,69 @@ export default function SettingsPage() {
       .catch(() => {});
   }, []);
 
+  // Fetch API key on first reveal
+  async function handleToggleApiKey() {
+    if (apiKeyVisible) {
+      setApiKeyVisible(false);
+      return;
+    }
+
+    if (apiKey) {
+      setApiKeyVisible(true);
+      return;
+    }
+
+    const token = getToken();
+    if (!token) return;
+
+    setApiKeyLoading(true);
+    setApiKeyError("");
+    try {
+      const res = await fetch(`${API_URL}/auth/api-key`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message ?? "Failed to retrieve API key");
+      }
+      const data = await res.json();
+      setApiKey(data.api_key);
+      setApiKeyVisible(true);
+    } catch (err: any) {
+      setApiKeyError(err.message);
+    } finally {
+      setApiKeyLoading(false);
+    }
+  }
+
+  // Send OTP to current email
+  async function handleSendOtp() {
+    const token = getToken();
+    if (!token) return;
+
+    setEmailStatus("sending-otp");
+    setEmailError("");
+    try {
+      const res = await fetch(`${API_URL}/accounts/me/email/send-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message ?? "Failed to send OTP");
+      }
+      setOtpSent(true);
+      setEmailStatus("otp-sent");
+    } catch (err: any) {
+      setEmailStatus("error");
+      setEmailError(err.message);
+    }
+  }
+
+  // Save email (with OTP if needed)
   async function handleEmailSave(e: React.FormEvent) {
     e.preventDefault();
     const token = getToken();
@@ -54,22 +132,26 @@ export default function SettingsPage() {
     setEmailError("");
 
     try {
-      // Use API key auth — need to use the session token via the session endpoint
-      // For now, use the JWT token as bearer
+      const body: { email: string; otp?: string } = { email };
+      if (otp) body.otp = otp;
+
       const res = await fetch(`${API_URL}/accounts/me`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? "Failed to update email");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message ?? "Failed to update email");
       }
 
+      setAccount((prev) => (prev ? { ...prev, email } : prev));
+      setOtpSent(false);
+      setOtp("");
       setEmailStatus("saved");
       setTimeout(() => setEmailStatus("idle"), 2000);
     } catch (err: any) {
@@ -78,11 +160,66 @@ export default function SettingsPage() {
     }
   }
 
+  // Link wallet via MetaMask / injected provider
+  async function handleLinkWallet() {
+    const token = getToken();
+    if (!token || !account) return;
+
+    setWalletStatus("connecting");
+    setWalletError("");
+
+    try {
+      const ethereum = (window as any).ethereum;
+      if (!ethereum) {
+        throw new Error("No wallet found. Install MetaMask or another Web3 wallet.");
+      }
+
+      const accs: string[] = await ethereum.request({ method: "eth_requestAccounts" });
+      const walletAddress = accs[0];
+      if (!walletAddress) throw new Error("No account selected");
+
+      setWalletStatus("signing");
+
+      const message = `Link wallet to rent my browser: ${account.id}`;
+      const signature = await ethereum.request({
+        method: "personal_sign",
+        params: [message, walletAddress],
+      });
+
+      setWalletStatus("saving");
+
+      const res = await fetch(`${API_URL}/accounts/me/wallet`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ wallet_address: walletAddress, signature }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message ?? "Failed to link wallet");
+      }
+
+      setAccount((prev) => (prev ? { ...prev, walletAddress } : prev));
+      setWalletStatus("idle");
+    } catch (err: any) {
+      setWalletStatus("error");
+      setWalletError(err.message ?? "Failed to link wallet");
+    }
+  }
+
   if (!account) {
     return (
       <p className="font-mono text-sm text-muted-foreground">loading...</p>
     );
   }
+
+  const hasEmail = !!account.email;
+  const maskedKey = apiKey
+    ? apiKey.slice(0, 6) + "•".repeat(32) + apiKey.slice(-4)
+    : "••••••••••••••••••••••••••••••••••••••••";
 
   return (
     <div>
@@ -106,66 +243,203 @@ export default function SettingsPage() {
         {/* Wallet */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-3 font-mono text-sm font-bold">wallet address</h2>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-lg bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
-              {account.walletAddress}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-border text-xs"
-              onClick={() => navigator.clipboard.writeText(account.walletAddress)}
-            >
-              copy
-            </Button>
-          </div>
+          {account.walletAddress ? (
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-lg bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
+                {account.walletAddress}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-xs"
+                onClick={() => navigator.clipboard.writeText(account.walletAddress!)}
+              >
+                copy
+              </Button>
+            </div>
+          ) : (
+            <div>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Link a wallet to enable crypto payments (x402) and wallet-based login.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-xs"
+                disabled={walletStatus !== "idle" && walletStatus !== "error"}
+                onClick={handleLinkWallet}
+              >
+                {walletStatus === "connecting"
+                  ? "connecting..."
+                  : walletStatus === "signing"
+                    ? "sign message in wallet..."
+                    : walletStatus === "saving"
+                      ? "saving..."
+                      : "link wallet"}
+              </Button>
+              {walletError && (
+                <p className="mt-2 text-xs text-red-400">{walletError}</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* API Key */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-3 font-mono text-sm font-bold">API key</h2>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Your API key was shown once at account creation. If you lost it, use
-            wallet signature recovery via{" "}
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-lg bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
+              {apiKeyVisible && apiKey ? apiKey : maskedKey}
+            </code>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border text-xs"
+              disabled={apiKeyLoading}
+              onClick={handleToggleApiKey}
+            >
+              {apiKeyLoading ? "..." : apiKeyVisible ? "hide" : "show"}
+            </Button>
+            {apiKeyVisible && apiKey && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-xs"
+                onClick={() => navigator.clipboard.writeText(apiKey)}
+              >
+                copy
+              </Button>
+            )}
+          </div>
+          {apiKeyError && (
+            <p className="mt-2 text-xs text-red-400">{apiKeyError}</p>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            If not available, use wallet signature recovery via{" "}
             <code className="text-emerald-500">/auth/challenge</code> +{" "}
             <code className="text-emerald-500">/auth/verify</code> to generate a
             new one.
           </p>
-          <a
-            href="/api-docs"
-            className="text-xs text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
-          >
-            see API docs for key recovery
-          </a>
         </div>
 
         {/* Email */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-3 font-mono text-sm font-bold">email</h2>
           <p className="mb-3 text-xs text-muted-foreground">
-            Link an email to enable email-based login.
+            {hasEmail
+              ? "To change your email, we'll send a verification code to your current address."
+              : "Link an email to enable email-based login."}
           </p>
-          <form onSubmit={handleEmailSave} className="flex gap-2">
-            <Input
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              type="submit"
-              disabled={emailStatus === "saving"}
-              className="bg-emerald-600 text-white hover:bg-emerald-500"
-            >
-              {emailStatus === "saving"
-                ? "saving..."
-                : emailStatus === "saved"
-                  ? "saved!"
-                  : "save"}
-            </Button>
-          </form>
-          {emailError && (
+
+          {/* If has email and wants to change → need OTP first */}
+          {hasEmail && !otpSent && emailStatus !== "saved" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <code className="flex-1 rounded-lg bg-background px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {account.email}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-border text-xs"
+                  disabled={emailStatus === "sending-otp"}
+                  onClick={handleSendOtp}
+                >
+                  {emailStatus === "sending-otp" ? "sending..." : "change email"}
+                </Button>
+              </div>
+              {emailError && (
+                <p className="text-xs text-red-400">{emailError}</p>
+              )}
+            </div>
+          )}
+
+          {/* OTP sent → show code input + new email input */}
+          {hasEmail && otpSent && (
+            <form onSubmit={handleEmailSave} className="space-y-3">
+              <div>
+                <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  code sent to {account.email}
+                </label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  className="w-32 font-mono tracking-widest"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                  new email
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    placeholder="new@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={emailStatus === "saving" || otp.length !== 6}
+                    className="bg-emerald-600 text-white hover:bg-emerald-500"
+                  >
+                    {emailStatus === "saving" ? "saving..." : "save"}
+                  </Button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpSent(false);
+                  setOtp("");
+                  setEmailStatus("idle");
+                  setEmailError("");
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                cancel
+              </button>
+              {emailError && (
+                <p className="text-xs text-red-400">{emailError}</p>
+              )}
+            </form>
+          )}
+
+          {/* No email → direct set */}
+          {!hasEmail && (
+            <form onSubmit={handleEmailSave} className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="submit"
+                disabled={emailStatus === "saving"}
+                className="bg-emerald-600 text-white hover:bg-emerald-500"
+              >
+                {emailStatus === "saving"
+                  ? "saving..."
+                  : emailStatus === "saved"
+                    ? "saved!"
+                    : "save"}
+              </Button>
+            </form>
+          )}
+
+          {/* Saved confirmation */}
+          {emailStatus === "saved" && (
+            <p className="mt-2 text-xs text-emerald-500">email updated!</p>
+          )}
+
+          {!hasEmail && emailError && (
             <p className="mt-2 text-xs text-red-400">{emailError}</p>
           )}
         </div>

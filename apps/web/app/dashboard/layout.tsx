@@ -81,7 +81,7 @@ export default function DashboardLayout({
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6">
             <Link href="/" className="font-mono text-lg font-bold">
-              rentmybrowser<span className="text-emerald-500">.ai</span>
+              🌐 rent my browser 🦞
             </Link>
             <nav className="hidden items-center gap-1 md:flex">
               {navItems.map((item) => (

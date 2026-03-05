@@ -12,6 +12,7 @@ import { asyncHandler } from "../../middleware/async-handler.js";
 import {
   createConsumerAccount,
   getAccount,
+  getApiKey,
   addCredits,
   requestWithdrawal,
   createChallenge,
@@ -19,6 +20,8 @@ import {
   sendEmailMagicLink,
   verifyEmailToken,
   getSession,
+  linkWallet,
+  sendEmailChangeOtp,
   updateAccountEmail,
 } from "./accounts.service.js";
 
@@ -133,10 +136,64 @@ router.get(
   }),
 );
 
+// --- Retrieve API key (session auth) ---
+
+router.get(
+  "/auth/api-key",
+  asyncHandler(async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "UNAUTHORIZED", message: "Missing token" });
+      return;
+    }
+    const token = authHeader.slice(7);
+    const session = await getSession(token);
+    const apiKey = await getApiKey(session.id);
+    if (!apiKey) {
+      res.status(404).json({ error: "NOT_FOUND", message: "API key not available. Use /auth/challenge + /auth/verify to generate a new one." });
+      return;
+    }
+    res.json({ api_key: apiKey });
+  }),
+);
+
+// --- Email change OTP ---
+
+router.post(
+  "/accounts/me/email/send-otp",
+  auth,
+  asyncHandler(async (req, res) => {
+    const result = await sendEmailChangeOtp(req.account!.id);
+    res.json(result);
+  }),
+);
+
+// --- Link wallet ---
+
+const linkWalletSchema = z.object({
+  wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid wallet address"),
+  signature: z.string().regex(/^0x[a-fA-F0-9]+$/, "Invalid signature"),
+});
+
+router.post(
+  "/accounts/me/wallet",
+  auth,
+  validate(linkWalletSchema),
+  asyncHandler(async (req, res) => {
+    const result = await linkWallet(
+      req.account!.id,
+      req.body.wallet_address,
+      req.body.signature,
+    );
+    res.json(result);
+  }),
+);
+
 // --- Update account email ---
 
 const updateEmailSchema = z.object({
   email: z.string().email(),
+  otp: z.string().length(6).optional(),
 });
 
 router.patch(
@@ -144,7 +201,7 @@ router.patch(
   auth,
   validate(updateEmailSchema),
   asyncHandler(async (req, res) => {
-    const result = await updateAccountEmail(req.account!.id, req.body.email);
+    const result = await updateAccountEmail(req.account!.id, req.body.email, req.body.otp);
     res.json(result);
   }),
 );

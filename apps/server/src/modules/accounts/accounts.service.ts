@@ -13,6 +13,8 @@ import {
 import {
   generateApiKey,
   hashApiKey,
+  encryptApiKey,
+  decryptApiKey,
   generateChallenge,
   verifyWalletSignature,
   signDashboardJwt,
@@ -36,10 +38,11 @@ export async function createConsumerAccount(walletAddress: string) {
 
   const rawApiKey = generateApiKey("consumer");
   const apiKeyHash = hashApiKey(rawApiKey);
+  const apiKeyEnc = encryptApiKey(rawApiKey);
 
   const [account] = await db
     .insert(accounts)
-    .values({ walletAddress, apiKeyHash, type: "consumer" })
+    .values({ walletAddress, apiKeyHash, apiKeyEnc, type: "consumer" })
     .returning({ id: accounts.id });
 
   const jwt = await signDashboardJwt(account.id);
@@ -234,10 +237,11 @@ export async function verifyChallenge(
 
   const newApiKey = generateApiKey(account.type);
   const apiKeyHash = hashApiKey(newApiKey);
+  const apiKeyEnc = encryptApiKey(newApiKey);
 
   await db
     .update(accounts)
-    .set({ apiKeyHash, updatedAt: new Date() })
+    .set({ apiKeyHash, apiKeyEnc, updatedAt: new Date() })
     .where(eq(accounts.id, account.id));
 
   const jwt = await signDashboardJwt(account.id);
@@ -307,21 +311,17 @@ export async function verifyEmailToken(token: string) {
     // Existing account — just log in
     accountId = challenge.accountId;
   } else {
-    // New account — create consumer with a generated wallet placeholder
+    // New account — email-only, no wallet yet
     const rawApiKey = generateApiKey("consumer");
     const apiKeyHash = hashApiKey(rawApiKey);
-    // Use a deterministic placeholder wallet address (not a real wallet)
-    const placeholderWallet = `0x${"0".repeat(40)}`;
-
-    // Check if placeholder wallet is taken — generate unique one
-    const walletAddress = `0x${randomBytes(20).toString("hex")}` as string;
+    const apiKeyEnc = encryptApiKey(rawApiKey);
 
     const [newAccount] = await db
       .insert(accounts)
       .values({
-        walletAddress,
         email: challenge.email,
         apiKeyHash,
+        apiKeyEnc,
         type: "consumer",
       })
       .returning({ id: accounts.id });
@@ -337,6 +337,44 @@ export async function verifyEmailToken(token: string) {
   };
 }
 
+// --- Link wallet ---
+
+export async function linkWallet(
+  accountId: string,
+  walletAddress: string,
+  signature: string,
+) {
+  // Check if wallet is already taken
+  const [existing] = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.walletAddress, walletAddress))
+    .limit(1);
+
+  if (existing && existing.id !== accountId) {
+    throw new ValidationError("Wallet already linked to another account");
+  }
+
+  // Verify ownership via signature
+  const message = `Link wallet to rent my browser: ${accountId}`;
+  const isValid = await verifyWalletSignature(
+    message,
+    signature as `0x${string}`,
+    walletAddress as `0x${string}`,
+  );
+
+  if (!isValid) {
+    throw new AuthError("Invalid signature");
+  }
+
+  await db
+    .update(accounts)
+    .set({ walletAddress, updatedAt: new Date() })
+    .where(eq(accounts.id, accountId));
+
+  return { wallet_address: walletAddress };
+}
+
 // --- Session (JWT-based) ---
 
 export async function getSession(jwtToken: string) {
@@ -344,9 +382,89 @@ export async function getSession(jwtToken: string) {
   return getAccount(accountId);
 }
 
+// --- Retrieve API key ---
+
+export async function getApiKey(accountId: string): Promise<string | null> {
+  const [account] = await db
+    .select({ apiKeyEnc: accounts.apiKeyEnc })
+    .from(accounts)
+    .where(eq(accounts.id, accountId));
+
+  if (!account?.apiKeyEnc) return null;
+  return decryptApiKey(account.apiKeyEnc);
+}
+
+// --- Email change OTP ---
+
+export async function sendEmailChangeOtp(accountId: string) {
+  const [account] = await db
+    .select({ email: accounts.email })
+    .from(accounts)
+    .where(eq(accounts.id, accountId));
+
+  if (!account?.email) {
+    throw new ValidationError("No email linked to this account");
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+  await db.insert(emailChallenges).values({
+    email: account.email,
+    token: `otp:${accountId}:${code}`,
+    accountId,
+    expiresAt,
+  });
+
+  const { emailSender } = await import("../../lib/email.js");
+  await emailSender.sendOtp(account.email, code);
+
+  return { sent: true };
+}
+
+function verifyOtp(accountId: string, code: string) {
+  return db
+    .select()
+    .from(emailChallenges)
+    .where(
+      and(
+        eq(emailChallenges.token, `otp:${accountId}:${code}`),
+        eq(emailChallenges.used, false),
+      ),
+    )
+    .limit(1);
+}
+
 // --- Update email ---
 
-export async function updateAccountEmail(accountId: string, email: string) {
+export async function updateAccountEmail(accountId: string, email: string, otp?: string) {
+  // Check current email
+  const [account] = await db
+    .select({ email: accounts.email })
+    .from(accounts)
+    .where(eq(accounts.id, accountId));
+
+  // If account already has an email, require OTP
+  if (account?.email) {
+    if (!otp) {
+      throw new ValidationError("OTP required to change existing email. Call POST /accounts/me/email/send-otp first.");
+    }
+
+    const [challenge] = await verifyOtp(accountId, otp);
+    if (!challenge) {
+      throw new AuthError("Invalid or expired OTP");
+    }
+    if (new Date() > challenge.expiresAt) {
+      throw new ValidationError("OTP has expired");
+    }
+
+    // Mark OTP as used
+    await db
+      .update(emailChallenges)
+      .set({ used: true })
+      .where(eq(emailChallenges.id, challenge.id));
+  }
+
   // Check if email is already taken by another account
   const [existing] = await db
     .select({ id: accounts.id })
