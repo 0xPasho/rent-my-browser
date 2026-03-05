@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount, useDisconnect, useSignMessage } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
@@ -64,6 +64,7 @@ export default function LoginPage() {
 function WalletLogin() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
+  const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
   const [status, setStatus] = useState<"idle" | "signing" | "verifying" | "error">("idle");
   const [error, setError] = useState("");
@@ -125,6 +126,13 @@ function WalletLogin() {
               <code className="font-mono text-xs text-emerald-500">
                 {address?.slice(0, 6)}...{address?.slice(-4)}
               </code>
+              {" · "}
+              <button
+                onClick={() => disconnect()}
+                className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
+              >
+                change
+              </button>
             </p>
             <Button
               onClick={handleSign}

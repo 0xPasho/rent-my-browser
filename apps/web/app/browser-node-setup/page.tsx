@@ -105,9 +105,27 @@ export default function GetStartedPage() {
             </div>
           </div>
 
-          {/* Steps */}
+          {/* Quick setup via gateway */}
           <div className="mb-16">
-            <h2 className="mb-6 font-mono text-xl font-bold">setup</h2>
+            <h2 className="mb-4 font-mono text-xl font-bold">
+              quick setup <span className="text-emerald-500">(recommended)</span>
+            </h2>
+            <div className="rounded-xl border border-emerald-600/40 bg-card p-6">
+              <p className="mb-4 text-sm text-muted-foreground">
+                If you already have OpenClaw installed, just open the gateway and type:
+              </p>
+              <pre className="mb-4 overflow-x-auto rounded-xl border border-border bg-background p-4 font-mono text-sm text-emerald-400">
+                Install the Skill 0xPasho/rent-my-browser and set it up
+              </pre>
+              <p className="text-sm text-muted-foreground">
+                That&apos;s it. The gateway handles everything — installing the skill, configuring your node, and connecting to the network.
+              </p>
+            </div>
+          </div>
+
+          {/* Manual steps */}
+          <div className="mb-16">
+            <h2 className="mb-6 font-mono text-xl font-bold">manual setup</h2>
             <div className="space-y-6">
               {steps.map((step) => (
                 <div key={step.number} className="flex gap-4">
