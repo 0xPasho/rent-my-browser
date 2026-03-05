@@ -304,6 +304,33 @@ export async function getNetworkStats(): Promise<NetworkStats> {
   return data;
 }
 
+// --- Online node availability (for task routing) ---
+
+interface NodeAvailability {
+  headless_online: number;
+  real_online: number;
+}
+
+let availabilityCache: { data: NodeAvailability; expiresAt: number } | null = null;
+const AVAILABILITY_CACHE_TTL = 15_000;
+
+export async function getNodeAvailability(): Promise<NodeAvailability> {
+  if (availabilityCache && Date.now() < availabilityCache.expiresAt) {
+    return availabilityCache.data;
+  }
+
+  const [{ headless_online, real_online }] = await db
+    .select({
+      headless_online: sql<number>`count(*) filter (where type = 'headless' and is_online = true)::int`,
+      real_online: sql<number>`count(*) filter (where type = 'real' and is_online = true)::int`,
+    })
+    .from(nodes);
+
+  const data: NodeAvailability = { headless_online, real_online };
+  availabilityCache = { data, expiresAt: Date.now() + AVAILABILITY_CACHE_TTL };
+  return data;
+}
+
 export async function markStaleNodesOffline(): Promise<number> {
   const staleThreshold = new Date(Date.now() - 60_000); // 60 seconds
 

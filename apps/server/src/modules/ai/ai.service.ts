@@ -1,5 +1,5 @@
 import { env } from "../../env.js";
-import { getNetworkStats } from "../nodes/nodes.service.js";
+import { getNodeAvailability } from "../nodes/nodes.service.js";
 
 export interface TaskEstimate {
   safe: boolean;
@@ -238,10 +238,10 @@ function fallbackEstimate(
     tier = "real";
   }
 
-  // If tier is headless but no headless nodes exist, use real nodes instead
+  // If tier is headless but no headless nodes are online, use real nodes instead
   if (tier === "headless") {
-    const stats = await getNetworkStats();
-    if (stats.headless_nodes === 0 && stats.real_nodes > 0) {
+    const availability = await getNodeAvailability();
+    if (availability.headless_online === 0 && availability.real_online > 0) {
       tier = "real";
     }
   }
