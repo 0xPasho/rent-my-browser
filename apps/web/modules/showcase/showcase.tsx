@@ -49,7 +49,7 @@ export function Showcase() {
   if (tasks.length === 0) return null;
 
   return (
-    <section className="border-t border-border py-20">
+    <section id="showcase" className="border-t border-border py-20">
       <div className="mx-auto max-w-5xl px-6">
         <p className="mb-3 text-center font-mono text-sm font-medium uppercase tracking-widest text-emerald-500">
           live from the network
