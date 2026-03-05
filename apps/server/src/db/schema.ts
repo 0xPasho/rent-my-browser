@@ -204,7 +204,7 @@ export const ledgerEntries = pgTable(
     type: ledgerTypeEnum("type").notNull(),
     amount: integer("amount").notNull(),
     category: ledgerCategoryEnum("category").notNull(),
-    referenceId: uuid("reference_id"),
+    referenceId: varchar("reference_id", { length: 255 }),
     memo: varchar("memo", { length: 255 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

@@ -1,0 +1,1 @@
+ALTER TABLE "ledger_entries" ALTER COLUMN "reference_id" SET DATA TYPE varchar(255);
