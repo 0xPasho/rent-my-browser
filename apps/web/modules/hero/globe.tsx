@@ -203,6 +203,45 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
     };
   }, []);
 
+  // Update map data when countries/locations change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    // Update country highlight filters
+    const countryFilter = [
+      "in",
+      ["get", "iso_3166_1"],
+      ["literal", nodeCountries],
+    ] as mapboxgl.FilterSpecification;
+
+    if (map.getLayer("node-countries-fill")) {
+      map.setFilter("node-countries-fill", countryFilter);
+    }
+    if (map.getLayer("node-countries-line")) {
+      map.setFilter("node-countries-line", countryFilter);
+    }
+
+    // Update node location dots
+    const source = map.getSource("node-locations") as mapboxgl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData({
+        type: "FeatureCollection",
+        features: nodeLocations.map((loc) => ({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [loc.lng, loc.lat],
+          },
+          properties: {
+            city: loc.city,
+            nodes: loc.nodes,
+          },
+        })),
+      });
+    }
+  }, [nodeCountries, nodeLocations]);
+
   return (
     <div className="relative aspect-square w-full overflow-hidden rounded-2xl">
       <div ref={containerRef} className="h-full w-full" />
