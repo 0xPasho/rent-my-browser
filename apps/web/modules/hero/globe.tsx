@@ -205,49 +205,37 @@ export function Globe({ countries = [], locations = [] }: GlobeProps = {}) {
     };
   }, []);
 
-  // Update map data when countries/locations change
+  // Update map data when countries/locations change.
+  // If layers don't exist yet, style.load handler will read the latest refs.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !map.getLayer("node-countries-fill")) return;
 
-    function applyData() {
-      const countryFilter = [
-        "in",
-        ["get", "iso_3166_1"],
-        ["literal", countriesRef.current],
-      ] as mapboxgl.FilterSpecification;
+    const countryFilter = [
+      "in",
+      ["get", "iso_3166_1"],
+      ["literal", countriesRef.current],
+    ] as mapboxgl.FilterSpecification;
 
-      if (map!.getLayer("node-countries-fill")) {
-        map!.setFilter("node-countries-fill", countryFilter);
-      }
-      if (map!.getLayer("node-countries-line")) {
-        map!.setFilter("node-countries-line", countryFilter);
-      }
+    map.setFilter("node-countries-fill", countryFilter);
+    map.setFilter("node-countries-line", countryFilter);
 
-      const source = map!.getSource("node-locations") as mapboxgl.GeoJSONSource | undefined;
-      if (source) {
-        source.setData({
-          type: "FeatureCollection",
-          features: locationsRef.current.map((loc) => ({
-            type: "Feature" as const,
-            geometry: {
-              type: "Point" as const,
-              coordinates: [loc.lng, loc.lat],
-            },
-            properties: {
-              city: loc.city,
-              nodes: loc.nodes,
-            },
-          })),
-        });
-      }
-    }
-
-    if (map.isStyleLoaded()) {
-      applyData();
-    } else {
-      map.once("style.load", applyData);
-      return () => { map.off("style.load", applyData); };
+    const source = map.getSource("node-locations") as mapboxgl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData({
+        type: "FeatureCollection",
+        features: locationsRef.current.map((loc) => ({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [loc.lng, loc.lat],
+          },
+          properties: {
+            city: loc.city,
+            nodes: loc.nodes,
+          },
+        })),
+      });
     }
   }, [countries, locations]);
 
