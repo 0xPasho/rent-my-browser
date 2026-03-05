@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db } from "../../db/index.js";
 import { accounts } from "../../db/schema/accounts.js";
@@ -213,7 +213,7 @@ export async function verifyChallenge(
         eq(challenges.used, false),
       ),
     )
-    .orderBy(challenges.createdAt)
+    .orderBy(desc(challenges.createdAt))
     .limit(1);
 
   if (!challenge) {
