@@ -41,7 +41,15 @@ export function Showcase() {
     fetch(`${API_URL}/showcase`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.tasks?.length) setTasks(data.tasks);
+        if (data?.tasks?.length) {
+          setTasks(data.tasks);
+          // Scroll to #showcase if hash matches (element didn't exist during initial load)
+          if (window.location.hash === "#showcase") {
+            setTimeout(() => {
+              document.getElementById("showcase")?.scrollIntoView({ behavior: "smooth" });
+            }, 100);
+          }
+        }
       })
       .catch(() => {});
   }, []);
