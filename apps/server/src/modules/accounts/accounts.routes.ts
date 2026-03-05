@@ -230,7 +230,7 @@ router.post(
             unit_amount: Math.round(amountDollars * 100), // Stripe uses cents
             product_data: {
               name: `${credits.toLocaleString()} Credits`,
-              description: `rentmybrowser.ai — ${credits.toLocaleString()} credits ($${amountDollars.toFixed(2)})`,
+              description: `rent my browser — ${credits.toLocaleString()} credits ($${amountDollars.toFixed(2)})`,
             },
           },
           quantity: 1,

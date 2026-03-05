@@ -3,7 +3,7 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Browser Node Setup — rentmybrowser.ai",
+  title: "Browser Node Setup — rent my browser",
   description:
     "Set up your node in 2 minutes. Install OpenClaw, connect your browser, and start earning.",
 };

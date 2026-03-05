@@ -15,7 +15,7 @@ export function Terminal() {
       <div className="p-4 font-mono text-xs leading-relaxed sm:text-sm">
         <div className="text-muted-foreground">
           <span className="text-emerald-500">$</span> curl
-          https://api.rentmybrowser.ai/tasks \
+          https://api.rentmybrowser.dev/tasks \
         </div>
         <div className="pl-4 text-muted-foreground">
           -H{" "}

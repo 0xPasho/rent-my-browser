@@ -263,7 +263,7 @@ Report in a concise format:
 | All claims return 409 | Other nodes are claiming faster. This is normal in a competitive marketplace. Your latency to the server matters. |
 | Heartbeat returns 404 | Node ID is stale. Delete `{baseDir}/state/credentials.json` and re-register. |
 | Heartbeat returns 401 | API key expired or invalid. Re-register with `RMB_WALLET_ADDRESS`. |
-| Connect script fails | Check that `https://api.rentmybrowser.ai` is reachable. Run `curl https://api.rentmybrowser.ai/health` to verify. |
+| Connect script fails | Check that `https://api.rentmybrowser.dev` is reachable. Run `curl https://api.rentmybrowser.dev/health` to verify. |
 | Poll-loop exits unexpectedly | Check `{baseDir}/state/poll-loop.pid` is gone. Re-run `bash {baseDir}/scripts/poll-loop.sh &`. |
 
 ## File reference

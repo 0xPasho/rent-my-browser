@@ -1,7 +1,7 @@
 # Operator API Reference
 
 All endpoints require `Authorization: Bearer <api_key>` unless noted.
-Base URL: `https://api.rentmybrowser.ai`
+Base URL: `https://api.rentmybrowser.dev`
 
 ## Registration (no auth)
 

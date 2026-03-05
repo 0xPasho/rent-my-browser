@@ -1,23 +1,21 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../../env.js";
 
-// v1: local disk storage. Swap to S3/R2 later.
+const s3 = new S3Client({
+  region: env.S3_REGION,
+  endpoint: env.S3_ENDPOINT,
+  credentials: {
+    accessKeyId: env.S3_ACCESS_KEY,
+    secretAccessKey: env.S3_SECRET_KEY,
+  },
+  forcePathStyle: true,
+});
+
+const PRESIGN_TTL = 60 * 60 * 24; // 24 hours
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function ensureDir(dir: string): void {
-  mkdirSync(dir, { recursive: true });
-}
-
-function safePath(base: string, ...segments: string[]): string {
-  const resolved = resolve(base, ...segments);
-  if (!resolved.startsWith(resolve(base))) {
-    throw new Error("Path traversal detected");
-  }
-  return resolved;
-}
 
 export async function uploadScreenshot(
   taskId: string,
@@ -31,20 +29,23 @@ export async function uploadScreenshot(
     throw new Error("Invalid step number");
   }
 
-  const dir = safePath(env.UPLOAD_DIR, taskId);
-  ensureDir(dir);
+  const key = `${taskId}/step_${stepNumber}.png`;
+  const buffer = typeof data === "string" ? Buffer.from(data, "base64") : data;
 
-  const filename = `step_${stepNumber}.png`;
-  const filepath = join(dir, filename);
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: key,
+      Body: buffer,
+      ContentType: "image/png",
+    }),
+  );
 
-  const buffer = typeof data === "string"
-    ? Buffer.from(data, "base64")
-    : data;
-
-  writeFileSync(filepath, buffer);
-
-  // Return a URL path that the static route will serve
-  return `/uploads/${taskId}/${filename}`;
+  return getSignedUrl(
+    s3,
+    new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
+    { expiresIn: PRESIGN_TTL },
+  );
 }
 
 export async function uploadFile(
@@ -56,21 +57,25 @@ export async function uploadFile(
     throw new Error("Invalid task ID format");
   }
 
-  const dir = safePath(env.UPLOAD_DIR, taskId, "files");
-  ensureDir(dir);
-
-  // Only allow safe extensions, strip any path components from originalName
   const baseName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const ext = baseName.includes(".")
     ? baseName.slice(baseName.lastIndexOf("."))
     : "";
-  const filename = `${randomUUID()}${ext}`;
-  const filepath = join(dir, filename);
+  const key = `${taskId}/files/${randomUUID()}${ext}`;
 
-  writeFileSync(filepath, data);
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: key,
+      Body: data,
+    }),
+  );
 
-  return {
-    name: originalName,
-    url: `/uploads/${taskId}/files/${filename}`,
-  };
+  const url = await getSignedUrl(
+    s3,
+    new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: key }),
+    { expiresIn: PRESIGN_TTL },
+  );
+
+  return { name: originalName, url };
 }

@@ -3,8 +3,8 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — rentmybrowser.ai",
-  description: "Terms of Service for rentmybrowser.ai",
+  title: "Terms of Service — rent my browser",
+  description: "Terms of Service for rent my browser",
 };
 
 const lastUpdated = "March 3, 2026";
@@ -29,14 +29,14 @@ export default function TermsPage() {
                 1. Overview
               </h2>
               <p className="mb-3">
-                rentmybrowser.ai (&quot;Platform&quot;, &quot;we&quot;, &quot;us&quot;) is a marketplace that
+                rentmybrowser.dev (&quot;Platform&quot;, &quot;we&quot;, &quot;us&quot;) is a marketplace that
                 connects AI agents (&quot;Consumers&quot;) with individuals who make their
                 browsers available for task execution (&quot;Operators&quot;). We act solely
                 as an intermediary — we do not control, operate, or supervise the
                 browsers, the tasks submitted, or the results produced.
               </p>
               <p>
-                By accessing or using rentmybrowser.ai, including our API, MCP
+                By accessing or using rentmybrowser.dev, including our API, MCP
                 server, website, or any related services, you agree to be bound by
                 these Terms of Service. If you do not agree, do not use the
                 Platform.
@@ -175,7 +175,7 @@ export default function TermsPage() {
               </p>
               <p className="mb-3">
                 Task results — including screenshots, extracted data, and files —
-                are produced by Operator nodes, not by rentmybrowser.ai. We are
+                are produced by Operator nodes, not by rentmybrowser.dev. We are
                 not responsible for the accuracy, completeness, legality, or
                 quality of any task output.
               </p>
@@ -224,7 +224,7 @@ export default function TermsPage() {
               <p>
                 The Platform, its API, MCP server, website, branding, and all
                 related technology are the intellectual property of
-                rentmybrowser.ai. You may not copy, modify, or reverse-engineer
+                rentmybrowser.dev. You may not copy, modify, or reverse-engineer
                 any part of the Platform without written permission.
               </p>
             </section>
@@ -241,7 +241,7 @@ export default function TermsPage() {
                 non-infringement.
               </p>
               <p className="mb-3">
-                To the maximum extent permitted by law, rentmybrowser.ai shall not
+                To the maximum extent permitted by law, rentmybrowser.dev shall not
                 be liable for any indirect, incidental, special, consequential, or
                 punitive damages, including but not limited to loss of profits,
                 data, business opportunities, or goodwill, arising from your use
@@ -269,7 +269,7 @@ export default function TermsPage() {
               </h2>
               <p>
                 You agree to indemnify, defend, and hold harmless
-                rentmybrowser.ai, its founders, employees, and affiliates from
+                rentmybrowser.dev, its founders, employees, and affiliates from
                 any claims, damages, losses, liabilities, costs, and expenses
                 (including legal fees) arising from: (a) your use of the
                 Platform, (b) your violation of these Terms, (c) your violation of
@@ -318,10 +318,10 @@ export default function TermsPage() {
               <p>
                 For questions about these Terms, contact us at{" "}
                 <a
-                  href="mailto:support@rentmybrowser.ai"
+                  href="mailto:support@rentmybrowser.dev"
                   className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
                 >
-                  support@rentmybrowser.ai
+                  support@rentmybrowser.dev
                 </a>
                 .
               </p>

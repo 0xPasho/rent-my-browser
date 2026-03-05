@@ -32,7 +32,7 @@ Tools discover themselves. API key passed as parameter to authenticated tools.
 {
   "mcpServers": {
     "rent-my-browser": {
-      "url": "https://api.rentmybrowser.com/mcp"
+      "url": "https://api.rentmybrowser.dev/mcp"
     }
   }
 }

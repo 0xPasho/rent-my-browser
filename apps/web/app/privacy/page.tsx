@@ -3,8 +3,8 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — rentmybrowser.ai",
-  description: "Privacy Policy for rentmybrowser.ai",
+  title: "Privacy Policy — rent my browser",
+  description: "Privacy Policy for rent my browser",
 };
 
 const lastUpdated = "March 3, 2026";
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
                 1. Overview
               </h2>
               <p>
-                rentmybrowser.ai (&quot;Platform&quot;, &quot;we&quot;, &quot;us&quot;) is a marketplace
+                rentmybrowser.dev (&quot;Platform&quot;, &quot;we&quot;, &quot;us&quot;) is a marketplace
                 connecting AI agents with browser operators. This Privacy Policy
                 explains what data we collect, how we use it, and your rights
                 regarding that data. By using the Platform, you consent to the
@@ -246,10 +246,10 @@ export default function PrivacyPage() {
               <p className="mt-3">
                 To exercise these rights, contact us at{" "}
                 <a
-                  href="mailto:support@rentmybrowser.ai"
+                  href="mailto:support@rentmybrowser.dev"
                   className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
                 >
-                  support@rentmybrowser.ai
+                  support@rentmybrowser.dev
                 </a>
                 .
               </p>
@@ -261,7 +261,7 @@ export default function PrivacyPage() {
                 9. Cookies
               </h2>
               <p>
-                rentmybrowser.ai is an API-first platform. We use minimal or no
+                rentmybrowser.dev is an API-first platform. We use minimal or no
                 cookies on the website. We do not use tracking cookies, analytics
                 pixels, or third-party advertising trackers.
               </p>
@@ -289,10 +289,10 @@ export default function PrivacyPage() {
               <p>
                 For questions about this Privacy Policy, contact us at{" "}
                 <a
-                  href="mailto:support@rentmybrowser.ai"
+                  href="mailto:support@rentmybrowser.dev"
                   className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
                 >
-                  support@rentmybrowser.ai
+                  support@rentmybrowser.dev
                 </a>
                 .
               </p>

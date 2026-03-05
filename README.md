@@ -17,7 +17,7 @@ A marketplace that connects consumers who need browser automation with OpenClaw 
 {
   "mcpServers": {
     "rent-my-browser": {
-      "url": "https://api.rentmybrowser.com/mcp"
+      "url": "https://api.rentmybrowser.dev/mcp"
     }
   }
 }

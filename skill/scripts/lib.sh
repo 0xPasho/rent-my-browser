@@ -34,7 +34,7 @@ rmb_check_deps() {
 }
 
 # ── Server URL ─────────────────────────────────────────────────────────────
-RMB_SERVER_URL="https://api.rentmybrowser.ai"
+RMB_SERVER_URL="https://api.rentmybrowser.dev"
 
 # ── Auth check ─────────────────────────────────────────────────────────────
 rmb_ensure_auth() {

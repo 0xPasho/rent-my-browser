@@ -8,7 +8,7 @@ import { base, baseSepolia } from "wagmi/chains";
 import "@rainbow-me/rainbowkit/styles.css";
 
 const config = getDefaultConfig({
-  appName: "rentmybrowser.ai",
+  appName: "rent my browser",
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_ID ?? "placeholder",
   chains: [base, baseSepolia],
   ssr: true,

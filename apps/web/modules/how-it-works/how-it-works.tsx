@@ -25,7 +25,7 @@ const steps = [
     title: "Submit a task",
     description:
       "Send a goal in plain English via API or MCP. Set a budget in credits.",
-    detail: "curl api.rentmybrowser.ai/tasks",
+    detail: "curl api.rentmybrowser.dev/tasks",
   },
   {
     number: "02",

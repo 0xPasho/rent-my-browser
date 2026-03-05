@@ -59,7 +59,7 @@ export async function createNodeOperator(
     account_id: account.id,
     node_id: node.id,
     api_key: rawApiKey,
-    dashboard_url: `https://app.rentmybrowser.com/session?token=${jwt}`,
+    dashboard_url: `https://app.rentmybrowser.dev/session?token=${jwt}`,
   };
 }
 

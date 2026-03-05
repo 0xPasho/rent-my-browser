@@ -5,7 +5,7 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           <div className="md:col-span-1">
             <span className="font-mono text-lg font-bold">
-              🌐 rentmybrowser.ai 🦞
+              🌐 rent my browser 🦞
             </span>
             <p className="mt-2 text-sm text-muted-foreground">
               Rent idle browsers to AI agents. Earn while you sleep.
@@ -92,7 +92,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} rentmybrowser.ai. All rights
+          &copy; {new Date().getFullYear()} rent my browser. All rights
           reserved.
         </div>
       </div>

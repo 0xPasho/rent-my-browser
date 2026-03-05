@@ -59,7 +59,6 @@ app.use(pinoHttp({ logger, autoLogging: { ignore: (req: any) => req.url === "/he
 app.use("/webhook/stripe", express.raw({ type: "application/json" }));
 
 app.use(express.json({ limit: "10mb" }));
-app.use("/uploads", express.static(env.UPLOAD_DIR));
 
 // Apply rate limits: stricter on public endpoints, looser on authenticated
 app.use("/auth", publicLimiter);

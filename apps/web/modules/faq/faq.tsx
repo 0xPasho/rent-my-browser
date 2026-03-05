@@ -6,7 +6,7 @@ const faqs = [
   {
     question: "how is this different from headless browsers?",
     answer:
-      "headless browsers get detected and blocked by most modern sites. rentmybrowser.ai uses real Chrome browsers on real machines with residential IPs, real cookies, and real fingerprints. sites see a real user, not a bot.",
+      "headless browsers get detected and blocked by most modern sites. rent my browser uses real Chrome browsers on real machines with residential IPs, real cookies, and real fingerprints. sites see a real user, not a bot.",
   },
   {
     question: "how do I send a task?",

@@ -12,7 +12,11 @@ const envSchema = z.object({
     .string()
     .default("0x0000000000000000000000000000000000000000"),
   X402_FACILITATOR_URL: z.string().default("https://www.x402.org/facilitator"),
-  UPLOAD_DIR: z.string().default("/tmp/rmb-uploads"),
+  S3_ENDPOINT: z.string().min(1),
+  S3_ACCESS_KEY: z.string().min(1),
+  S3_SECRET_KEY: z.string().min(1),
+  S3_BUCKET: z.string().default("rentmybrowser"),
+  S3_REGION: z.string().default("us-east-1"),
   DASHBOARD_URL: z.string().default("http://localhost:3001"),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),

@@ -3,7 +3,7 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "API Reference — rentmybrowser.ai",
+  title: "API Reference — rent my browser",
   description:
     "REST API documentation for renting real browsers. Submit tasks, poll results, manage credits.",
 };
@@ -530,7 +530,7 @@ export default function ApiDocsPage() {
               Base URL
             </p>
             <code className="font-mono text-sm text-emerald-400">
-              https://api.rentmybrowser.ai
+              https://api.rentmybrowser.dev
             </code>
             <span className="mx-3 text-muted-foreground/30">|</span>
             <span className="font-mono text-xs text-muted-foreground">

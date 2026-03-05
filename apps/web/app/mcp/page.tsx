@@ -3,7 +3,7 @@ import { Nav } from "@/modules/layout/nav";
 import { Footer } from "@/modules/layout/footer";
 
 export const metadata: Metadata = {
-  title: "MCP Integration — rentmybrowser.ai",
+  title: "MCP Integration — rent my browser",
   description:
     "Set up MCP in one line. Your AI agent discovers and rents real browsers automatically.",
 };
@@ -60,7 +60,7 @@ export default function McpPage() {
               <span className="text-muted-foreground">{"{"}</span>{"\n"}
               {"  "}<span className="text-muted-foreground">&quot;mcpServers&quot;</span>: <span className="text-muted-foreground">{"{"}</span>{"\n"}
               {"    "}<span className="text-muted-foreground">&quot;rent-my-browser&quot;</span>: <span className="text-muted-foreground">{"{"}</span>{"\n"}
-              {"      "}<span className="text-muted-foreground">&quot;url&quot;</span>: <span className="text-emerald-400">&quot;https://api.rentmybrowser.ai/mcp&quot;</span>{"\n"}
+              {"      "}<span className="text-muted-foreground">&quot;url&quot;</span>: <span className="text-emerald-400">&quot;https://api.rentmybrowser.dev/mcp&quot;</span>{"\n"}
               {"    "}<span className="text-muted-foreground">{"}"}</span>{"\n"}
               {"  "}<span className="text-muted-foreground">{"}"}</span>{"\n"}
               <span className="text-muted-foreground">{"}"}</span>

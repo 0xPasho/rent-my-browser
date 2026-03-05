@@ -15,7 +15,7 @@ The MCP server is for the **consumer/agent side** (using browsers).
 {
   "mcpServers": {
     "rent-my-browser": {
-      "url": "https://api.rentmybrowser.com/mcp"
+      "url": "https://api.rentmybrowser.dev/mcp"
     }
   }
 }
