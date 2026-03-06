@@ -19,6 +19,10 @@ const quickStart = [
     step: "2",
     title: "top up credits",
     code: `POST /accounts/credits/stripe\n{ "amount": 10 }\n→ { "url": "https://checkout.stripe.com/..." }\n\n// or via x402: POST /accounts/credits/crypto/1000`,
+    link: {
+      label: "x402 fetch example",
+      href: "https://github.com/coinbase/x402/blob/main/examples/typescript/clients/fetch/index.ts",
+    },
   },
   {
     step: "3",
@@ -558,6 +562,19 @@ export default function ApiDocsPage() {
                     <pre className="overflow-x-auto rounded-xl border border-border bg-card p-4 font-mono text-xs leading-relaxed text-muted-foreground">
                       {s.code}
                     </pre>
+                    {s.link && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Full example:{" "}
+                        <a
+                          href={s.link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-emerald-500 underline underline-offset-4 hover:text-emerald-400"
+                        >
+                          {s.link.label}
+                        </a>
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
