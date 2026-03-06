@@ -235,20 +235,6 @@ export default function SettingsPage() {
       <h1 className="mb-6 font-mono text-2xl font-bold">settings</h1>
 
       <div className="space-y-6">
-        {/* Account type */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-3 font-mono text-sm font-bold">account type</h2>
-          <span
-            className={`rounded-md px-3 py-1 font-mono text-sm font-medium ${
-              account.type === "consumer"
-                ? "bg-blue-500/10 text-blue-400"
-                : "bg-emerald-500/10 text-emerald-400"
-            }`}
-          >
-            {account.type}
-          </span>
-        </div>
-
         {/* Wallet */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-3 font-mono text-sm font-bold">wallet address</h2>

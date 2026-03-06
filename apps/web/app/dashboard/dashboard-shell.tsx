@@ -111,15 +111,6 @@ export default function DashboardLayout({
                 ${((account?.balance ?? 0) / 100).toFixed(2)} USD
               </p>
             </div>
-            <span
-              className={`rounded-md px-2 py-0.5 font-mono text-[10px] font-medium ${
-                account?.type === "consumer"
-                  ? "bg-blue-500/10 text-blue-400"
-                  : "bg-emerald-500/10 text-emerald-400"
-              }`}
-            >
-              {account?.type}
-            </span>
             <button
               onClick={handleLogout}
               className="font-mono text-xs text-muted-foreground hover:text-foreground"

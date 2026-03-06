@@ -110,10 +110,6 @@ export default function DashboardOverview() {
         <h2 className="mb-4 font-mono text-lg font-bold">account</h2>
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">type</span>
-              <span className="font-mono font-medium">{account.type}</span>
-            </div>
             {account.walletAddress && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">wallet</span>
