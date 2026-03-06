@@ -1,7 +1,6 @@
 import { GlobeWithStats } from "@/modules/hero/globe-with-stats";
 import { Button } from "@/components/ui/button";
 import { BeforeAfter } from "./before-after";
-import { UseCaseExamples } from "./use-case-examples";
 
 const howSteps = [
   {
@@ -31,11 +30,6 @@ export function HowItWorks() {
     <section id="how-it-works">
       {/* Before / After comparison */}
       <BeforeAfter />
-
-      {/* Concrete use case examples */}
-      <div className="border-b border-border">
-        <UseCaseExamples />
-      </div>
 
       {/* Globe + earn section */}
       <div className="py-20">

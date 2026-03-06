@@ -15,7 +15,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 type Tab = "wallet" | "email";
 
 export default function LoginPage() {
-  const [tab, setTab] = useState<Tab>("wallet");
+  const [tab, setTab] = useState<Tab>("email");
 
   return (
     <>
@@ -32,16 +32,6 @@ export default function LoginPage() {
           {/* Tabs */}
           <div className="mb-6 flex rounded-lg border border-border bg-card p-1">
             <button
-              onClick={() => setTab("wallet")}
-              className={`flex-1 rounded-md py-2 font-mono text-sm font-medium transition-colors ${
-                tab === "wallet"
-                  ? "bg-emerald-600 text-white"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              wallet
-            </button>
-            <button
               onClick={() => setTab("email")}
               className={`flex-1 rounded-md py-2 font-mono text-sm font-medium transition-colors ${
                 tab === "email"
@@ -50,6 +40,16 @@ export default function LoginPage() {
               }`}
             >
               email
+            </button>
+            <button
+              onClick={() => setTab("wallet")}
+              className={`flex-1 rounded-md py-2 font-mono text-sm font-medium transition-colors ${
+                tab === "wallet"
+                  ? "bg-emerald-600 text-white"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              wallet
             </button>
           </div>
 

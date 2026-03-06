@@ -20,6 +20,7 @@ const navItems = [
   { href: "/dashboard", label: "overview" },
   { href: "/dashboard/tasks", label: "tasks" },
   { href: "/dashboard/top-up", label: "top up" },
+  { href: "/dashboard/withdraw", label: "withdraw" },
   { href: "/dashboard/settings", label: "settings" },
 ];
 
